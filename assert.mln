@@ -1,0 +1,75 @@
+package assert;
+
+import str from "str.mln";
+import bytes from "bytes.mln";
+import { Result } from "result.mln";
+
+// Each runtime supplies this failure hook. A kernel test can print the
+// message and halt; a hosted runtime can print it and terminate the process.
+extern void assert_fail(char* message);
+
+// Assertions use i32 because MyLang conditions and comparison expressions
+// currently lower to i32 (zero is false; non-zero is true).
+export void assert_true(i32 condition, char* message) {
+    if (condition == 0) {
+        assert_fail(message);
+    }
+}
+
+export void assert_false(i32 condition, char* message) {
+    if (condition != 0) {
+        assert_fail(message);
+    }
+}
+
+// Equality is generic, but only types supported by MyLang's == operator may
+// instantiate it: integer-like scalars, ordinary enums, and pointers.
+export void assert_eq<T>(T actual, T expected, char* message) {
+    if (actual != expected) {
+        assert_fail(message);
+    }
+}
+
+export void assert_ne<T>(T actual, T expected, char* message) {
+    if (actual == expected) {
+        assert_fail(message);
+    }
+}
+
+export void assert_null<T>(T* value, char* message) {
+    if (value != 0) {
+        assert_fail(message);
+    }
+}
+
+export void assert_not_null<T>(T* value, char* message) {
+    if (value == 0) {
+        assert_fail(message);
+    }
+}
+
+export void assert_str_eq(char* actual, char* expected, char* message) {
+    if (str.eq(actual, expected) == 0) {
+        assert_fail(message);
+    }
+}
+
+export void assert_bytes_eq(char* actual, char* expected, i32 len, char* message) {
+    if (bytes.eq(actual, expected, len) == 0) {
+        assert_fail(message);
+    }
+}
+
+export void assert_result_ok<T, E>(Result<T, E>* result, char* message) {
+    case *result of {
+        Ok(value) -> 0;
+        Err(error) -> assert_fail(message);
+    };
+}
+
+export void assert_result_err<T, E>(Result<T, E>* result, char* message) {
+    case *result of {
+        Ok(value) -> assert_fail(message);
+        Err(error) -> 0;
+    };
+}

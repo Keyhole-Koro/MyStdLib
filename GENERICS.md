@@ -28,6 +28,7 @@ i32 main() {
 | `option.mln` | payload-enum `Option<T>` (`Some(T)` / `None`) |
 | `result.mln` | payload-enum `Result<T,E>` (`Ok(T)` / `Err(E)`) |
 | `hashmap.mln` | string-keyed `HashMap<T>` |
+| `assert.mln` | condition assertions plus generic `assert_eq<T>` / `assert_ne<T>` and `Result<T,E>` checks |
 
 `Slice<T>`, `Vec<T>`, `Arena<T>`, and `RingBuffer<T>` operate on storage passed
 by the caller. `IntrusiveList<T>` is singly linked; each push/pop receives the
@@ -39,6 +40,10 @@ common "check and consume" shape.
 `HashMap<T>` maps borrowed NUL-terminated string keys to `T` values using
 caller-provided `i32` key-address and value arrays; it has insertion, replacement,
 and lookup but not deletion or automatic growth. Its capacity must be a power of two.
+
+`assert.mln` requires each runtime to provide `assert_fail(char* message)`. It
+uses the existing `==` / `!=` operators, so `assert_eq<T>` and `assert_ne<T>`
+are valid for types those operators support after generic instantiation.
 
 Current code generation is reliable for scalar and pointer element types.
 Passing aggregate values by value remains outside the container API contract.
