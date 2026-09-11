@@ -37,11 +37,8 @@ export i32 cmp(char* a, char* b) {
 }
 
 // Non-zero when both strings hold the same bytes.
-export i32 eq(char* a, char* b) {
-    if (cmp(a, b) == 0) {
-        return 1;
-    }
-    return 0;
+export bool eq(char* a, char* b) {
+    return cmp(a, b) == 0;
 }
 
 // Compare at most n bytes. Returns 0 when the first n bytes match.

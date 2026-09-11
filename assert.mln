@@ -8,15 +8,14 @@ import { Result } from "result.mln";
 // message and halt; a hosted runtime can print it and terminate the process.
 extern void assert_fail(char* message);
 
-// Assertions use i32 because MyLang conditions and comparison expressions
-// currently lower to i32 (zero is false; non-zero is true).
-export void assert_true(i32 condition, char* message) {
+
+export void assert_true(bool condition, char* message) {
     if (condition == 0) {
         assert_fail(message);
     }
 }
 
-export void assert_false(i32 condition, char* message) {
+export void assert_false(bool condition, char* message) {
     if (condition != 0) {
         assert_fail(message);
     }
