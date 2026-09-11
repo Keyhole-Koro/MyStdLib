@@ -1,6 +1,6 @@
 package strbuf;
 
-import str from "str.mln";
+import str from "../str.mln";
 
 // Append-only string builder over a caller-owned char array.
 //
