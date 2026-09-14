@@ -1,5 +1,7 @@
 package str;
 
+import { Option } from "option.mln";
+
 // NUL-terminated byte string helpers.
 //
 // A "string" here is a `char*` pointing at bytes terminated by 0, the only
@@ -133,18 +135,21 @@ export i32 chr(char* s, i32 c) {
 
 // Index of the first occurrence of needle in haystack, or -1.
 // An empty needle matches at 0.
-export i32 find(char* haystack, char* needle) {
+export Option<i32> find(char* haystack, char* needle) {
     if (needle[0] == 0) {
-        return 0;
+        Option<i32> zero = Some(0);
+        return zero;
     }
     i32 i = 0;
     while (haystack[i] != 0) {
         if (starts_with(&haystack[i], needle) != 0) {
-            return i;
+            Option<i32> hit = Some(i);
+            return hit;
         }
         i = i + 1;
     }
-    return -1;
+    Option<i32> none = None;
+    return none;
 }
 
 // Convert a 32-bit integer to a NUL-terminated string in base 10.

@@ -1,5 +1,7 @@
 package bitset;
 
+import { Option } from "../option.mln";
+
 // Bit array over a caller-owned byte buffer.
 //
 // Bit i lives in byte i/8 at bit i%8, LSB first — the layout the MFS block
@@ -57,7 +59,7 @@ export i32 toggle(char* bits, i32 i) {
 //
 // Whole bytes of 0xFF are skipped at once, so scanning a nearly full bitmap
 // costs one load per 8 bits rather than one per bit.
-export i32 find_clear(char* bits, i32 n, i32 start) {
+export Option<i32> find_clear(char* bits, i32 n, i32 start) {
     i32 i = start;
     if (i < 0) {
         i = 0;
@@ -72,19 +74,22 @@ export i32 find_clear(char* bits, i32 n, i32 start) {
                 i = i + 8;
             }
             if (i >= n) {
-                return -1;
+                Option<i32> none = None;
+                return none;
             }
         }
         if (get(bits, i) == 0) {
-            return i;
+            Option<i32> hit = Some(i);
+            return hit;
         }
         i = i + 1;
     }
-    return -1;
+    Option<i32> none = None;
+    return none;
 }
 
 // Index of the first 1 bit at or after `start`, searching up to n bits, or -1.
-export i32 find_set(char* bits, i32 n, i32 start) {
+export Option<i32> find_set(char* bits, i32 n, i32 start) {
     i32 i = start;
     if (i < 0) {
         i = 0;
@@ -99,15 +104,18 @@ export i32 find_set(char* bits, i32 n, i32 start) {
                 i = i + 8;
             }
             if (i >= n) {
-                return -1;
+                Option<i32> none = None;
+                return none;
             }
         }
         if (get(bits, i) != 0) {
-            return i;
+            Option<i32> hit = Some(i);
+            return hit;
         }
         i = i + 1;
     }
-    return -1;
+    Option<i32> none = None;
+    return none;
 }
 
 // Number of set bits among the first n bits.
