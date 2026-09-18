@@ -86,11 +86,9 @@ export Option<i32> find(char* buf, i32 n, i32 value) {
     i32 i = 0;
     while (i < n) {
         if (((i32)buf[i] & 0xFF) == want) {
-            Option<i32> hit = Some(i);
-            return hit;
+            return Some(i);
         }
         i = i + 1;
     }
-    Option<i32> none = None;
-    return none;
+    return None;
 }

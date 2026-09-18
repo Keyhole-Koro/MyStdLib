@@ -74,18 +74,15 @@ export Option<i32> find_clear(char* bits, i32 n, i32 start) {
                 i = i + 8;
             }
             if (i >= n) {
-                Option<i32> none = None;
-                return none;
+                return None;
             }
         }
         if (get(bits, i) == 0) {
-            Option<i32> hit = Some(i);
-            return hit;
+            return Some(i);
         }
         i = i + 1;
     }
-    Option<i32> none = None;
-    return none;
+    return None;
 }
 
 // Index of the first 1 bit at or after `start`, searching up to n bits, or -1.
@@ -104,18 +101,15 @@ export Option<i32> find_set(char* bits, i32 n, i32 start) {
                 i = i + 8;
             }
             if (i >= n) {
-                Option<i32> none = None;
-                return none;
+                return None;
             }
         }
         if (get(bits, i) != 0) {
-            Option<i32> hit = Some(i);
-            return hit;
+            return Some(i);
         }
         i = i + 1;
     }
-    Option<i32> none = None;
-    return none;
+    return None;
 }
 
 // Number of set bits among the first n bits.

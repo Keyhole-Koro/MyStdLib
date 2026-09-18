@@ -123,36 +123,30 @@ export Option<i32> chr(char* s, i32 c) {
     i32 want = c & 0xFF;
     while (s[i] != 0) {
         if (((i32)s[i] & 0xFF) == want) {
-            Option<i32> hit = Some(i);
-            return hit;
+            return Some(i);
         }
         i = i + 1;
     }
     if (want == 0) {
-        Option<i32> hit = Some(i);
-        return hit;
+        return Some(i);
     }
-    Option<i32> none = None;
-    return none;
+    return None;
 }
 
 // Index of the first occurrence of needle in haystack, or -1.
 // An empty needle matches at 0.
 export Option<i32> find(char* haystack, char* needle) {
     if (needle[0] == 0) {
-        Option<i32> zero = Some(0);
-        return zero;
+        return Some(0);
     }
     i32 i = 0;
     while (haystack[i] != 0) {
         if (starts_with(&haystack[i], needle) != 0) {
-            Option<i32> hit = Some(i);
-            return hit;
+            return Some(i);
         }
         i = i + 1;
     }
-    Option<i32> none = None;
-    return none;
+    return None;
 }
 
 // Convert a 32-bit integer to a NUL-terminated string in base 10.
