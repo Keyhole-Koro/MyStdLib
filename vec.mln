@@ -15,24 +15,24 @@ export i32 vec_len<T>(Vec<T> *vec) {
     return vec->len;
 }
 
-export i32 vec_push<T>(Vec<T> *vec, T value) {
+export bool vec_push<T>(Vec<T> *vec, T value) {
     if (vec->len >= vec->cap) {
-        return 0;
+        return false;
     }
     T *data = vec->data;
     data[vec->len] = value;
-    vec->len = vec->len + 1;
-    return 1;
+    vec->len++;
+    return true;
 }
 
-export i32 vec_pop<T>(Vec<T> *vec, T *out) {
+export bool vec_pop<T>(Vec<T> *vec, T *out) {
     if (vec->len == 0) {
-        return 0;
+        return false;
     }
-    vec->len = vec->len - 1;
+    vec->len--;
     T *data = vec->data;
     *out = data[vec->len];
-    return 1;
+    return true;
 }
 
 export T *vec_at<T>(Vec<T> *vec, i32 index) {

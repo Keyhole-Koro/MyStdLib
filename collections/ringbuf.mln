@@ -25,41 +25,41 @@ export i32 ring_count<T>(RingBuffer<T> *ring) {
     return ring->cap - ring->head + ring->tail;
 }
 
-export i32 ring_has<T>(RingBuffer<T> *ring) {
+export bool ring_has<T>(RingBuffer<T> *ring) {
     if (ring->head == ring->tail) {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
-export i32 ring_full<T>(RingBuffer<T> *ring) {
+export bool ring_full<T>(RingBuffer<T> *ring) {
     i32 next = ring->tail + 1;
     if (next >= ring->cap) {
         next = 0;
     }
     if (next == ring->head) {
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
-export i32 ring_push<T>(RingBuffer<T> *ring, T value) {
+export bool ring_push<T>(RingBuffer<T> *ring, T value) {
     i32 next = ring->tail + 1;
     if (next >= ring->cap) {
         next = 0;
     }
     if (next == ring->head) {
-        return 0;
+        return false;
     }
     T *data = ring->data;
     data[ring->tail] = value;
     ring->tail = next;
-    return 1;
+    return true;
 }
 
-export i32 ring_pop<T>(RingBuffer<T> *ring, T *out) {
+export bool ring_pop<T>(RingBuffer<T> *ring, T *out) {
     if (ring->head == ring->tail) {
-        return 0;
+        return false;
     }
     T *data = ring->data;
     *out = data[ring->head];
@@ -67,17 +67,17 @@ export i32 ring_pop<T>(RingBuffer<T> *ring, T *out) {
     if (ring->head >= ring->cap) {
         ring->head = 0;
     }
-    return 1;
+    return true;
 }
 
 // Read the oldest value without removing it. Leaves *out untouched when empty.
-export i32 ring_peek<T>(RingBuffer<T> *ring, T *out) {
+export bool ring_peek<T>(RingBuffer<T> *ring, T *out) {
     if (ring->head == ring->tail) {
-        return 0;
+        return false;
     }
     T *data = ring->data;
     *out = data[ring->head];
-    return 1;
+    return true;
 }
 
 // Discard every queued value.

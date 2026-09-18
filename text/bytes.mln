@@ -72,12 +72,12 @@ export i32 cmp(char* a, char* b, i32 n) {
     return 0;
 }
 
-// Non-zero when the first n bytes of a and b are equal.
-export i32 eq(char* a, char* b, i32 n) {
+// True when the first n bytes of a and b are equal.
+export bool eq(char* a, char* b, i32 n) {
     if (cmp(a, b, n) == 0) {
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 // Index of the first byte equal to value within the first n bytes, or -1.

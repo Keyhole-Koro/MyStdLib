@@ -58,18 +58,18 @@ export i32 ncmp(char* a, char* b, i32 n) {
     return 0;
 }
 
-// Non-zero when s begins with prefix.
-export i32 starts_with(char* s, char* prefix) {
+// True when s begins with prefix.
+export bool starts_with(char* s, char* prefix) {
     i32 i = 0;
     while (prefix[i] != 0) {
         i32 cs = (i32)s[i] & 0xFF;
         i32 cp = (i32)prefix[i] & 0xFF;
         if (cs != cp) {
-            return 0;
+            return false;
         }
         i++;
     }
-    return 1;
+    return true;
 }
 
 // Copy src (including the terminator) into dst. Returns the length copied.

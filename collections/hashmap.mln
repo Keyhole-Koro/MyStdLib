@@ -23,15 +23,15 @@ export void hashmap_init<T>(HashMap<T> *map, i32 *keys, T *values, i32 cap) {
     }
 }
 
-export i32 hashmap_put<T>(HashMap<T> *map, char *key, T value) {
+export bool hashmap_put<T>(HashMap<T> *map, char *key, T value) {
     if (map->cap <= 0) {
-        return 0;
+        return false;
     }
     i32 hash = 5381;
     i32 index = 0;
     while (key[index] != 0) {
         hash = (hash * 33) + ((i32)key[index] & 0xFF);
-        index = index + 1;
+        index++;
     }
     i32 slot = hash & (map->cap - 1);
     i32 *keys = map->keys;
@@ -42,40 +42,40 @@ export i32 hashmap_put<T>(HashMap<T> *map, char *key, T value) {
         if (existing == (char *)0) {
             keys[slot] = (i32)key;
             values[slot] = value;
-            map->len = map->len + 1;
-            return 1;
+            map->len++;
+            return true;
         }
-        i32 equal = 1;
+        bool equal = true;
         index = 0;
         while (existing[index] != 0 || key[index] != 0) {
             if (existing[index] != key[index]) {
-                equal = 0;
+                equal = false;
                 break;
             }
-            index = index + 1;
+            index++;
         }
-        if (equal != 0) {
+        if (equal) {
             values[slot] = value;
-            return 1;
+            return true;
         }
         slot = slot + 1;
         if (slot >= map->cap) {
             slot = 0;
         }
-        checked = checked + 1;
+        checked++;
     }
-    return 0;
+    return false;
 }
 
-export i32 hashmap_get<T>(HashMap<T> *map, char *key, T *out) {
+export bool hashmap_get<T>(HashMap<T> *map, char *key, T *out) {
     if (map->cap <= 0) {
-        return 0;
+        return false;
     }
     i32 hash = 5381;
     i32 index = 0;
     while (key[index] != 0) {
         hash = (hash * 33) + ((i32)key[index] & 0xFF);
-        index = index + 1;
+        index++;
     }
     i32 slot = hash & (map->cap - 1);
     i32 *keys = map->keys;
@@ -84,26 +84,26 @@ export i32 hashmap_get<T>(HashMap<T> *map, char *key, T *out) {
     while (checked < map->cap) {
         char *existing = (char *)keys[slot];
         if (existing == (char *)0) {
-            return 0;
+            return false;
         }
-        i32 equal = 1;
+        bool equal = true;
         index = 0;
         while (existing[index] != 0 || key[index] != 0) {
             if (existing[index] != key[index]) {
-                equal = 0;
+                equal = false;
                 break;
             }
-            index = index + 1;
+            index++;
         }
-        if (equal != 0) {
+        if (equal) {
             *out = values[slot];
-            return 1;
+            return true;
         }
         slot = slot + 1;
         if (slot >= map->cap) {
             slot = 0;
         }
-        checked = checked + 1;
+        checked++;
     }
-    return 0;
+    return false;
 }
