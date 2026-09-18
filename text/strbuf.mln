@@ -54,7 +54,7 @@ export i32 append(char* buf, i32 cap, i32 len, char* s) {
         }
         buf[n] = s[i];
         n = n + 1;
-        i = i + 1;
+        i++;
     }
     buf[n] = 0;
     return n;
@@ -73,7 +73,7 @@ export i32 append_n(char* buf, i32 cap, i32 len, char* s, i32 max) {
         }
         buf[n] = s[i];
         n = n + 1;
-        i = i + 1;
+        i++;
     }
     buf[n] = 0;
     return n;
@@ -103,7 +103,7 @@ export i32 append_repeat(char* buf, i32 cap, i32 len, i32 c, i32 n) {
         }
         buf[written] = c & 0xFF;
         written = written + 1;
-        i = i + 1;
+        i++;
     }
     buf[written] = 0;
     return written;

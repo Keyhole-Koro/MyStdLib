@@ -80,7 +80,7 @@ export Option<i32> find_clear(char* bits, i32 n, i32 start) {
         if (get(bits, i) == 0) {
             return Some(i);
         }
-        i = i + 1;
+        i++;
     }
     return None;
 }
@@ -107,7 +107,7 @@ export Option<i32> find_set(char* bits, i32 n, i32 start) {
         if (get(bits, i) != 0) {
             return Some(i);
         }
-        i = i + 1;
+        i++;
     }
     return None;
 }
@@ -118,7 +118,7 @@ export i32 count(char* bits, i32 n) {
     i32 i = 0;
     while (i < n) {
         total = total + get(bits, i);
-        i = i + 1;
+        i++;
     }
     return total;
 }
@@ -129,6 +129,6 @@ export void clear_all(char* bits, i32 n) {
     i32 i = 0;
     while (i < nbytes) {
         bits[i] = 0;
-        i = i + 1;
+        i++;
     }
 }

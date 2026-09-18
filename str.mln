@@ -34,7 +34,7 @@ export i32 cmp(char* a, char* b) {
         if (ca == 0) {
             return 0;
         }
-        i = i + 1;
+        i++;
     }
 }
 
@@ -55,7 +55,7 @@ export i32 ncmp(char* a, char* b, i32 n) {
         if (ca == 0) {
             return 0;
         }
-        i = i + 1;
+        i++;
     }
     return 0;
 }
@@ -69,7 +69,7 @@ export i32 starts_with(char* s, char* prefix) {
         if (cs != cp) {
             return 0;
         }
-        i = i + 1;
+        i++;
     }
     return 1;
 }
@@ -80,7 +80,7 @@ export i32 copy(char* dst, char* src) {
     i32 i = 0;
     while (src[i] != 0) {
         dst[i] = src[i];
-        i = i + 1;
+        i++;
     }
     dst[i] = 0;
     return i;
@@ -98,7 +98,7 @@ export i32 ncopy(char* dst, char* src, i32 cap) {
             break;
         }
         dst[i] = src[i];
-        i = i + 1;
+        i++;
     }
     dst[i] = 0;
     return i;
@@ -111,7 +111,7 @@ export i32 cat(char* dst, char* src) {
     i32 i = 0;
     while (src[i] != 0) {
         dst[n + i] = src[i];
-        i = i + 1;
+        i++;
     }
     dst[n + i] = 0;
     return n + i;
@@ -125,7 +125,7 @@ export Option<i32> chr(char* s, i32 c) {
         if (((i32)s[i] & 0xFF) == want) {
             return Some(i);
         }
-        i = i + 1;
+        i++;
     }
     if (want == 0) {
         return Some(i);
@@ -144,7 +144,7 @@ export Option<i32> find(char* haystack, char* needle) {
         if (starts_with(&haystack[i], needle) != 0) {
             return Some(i);
         }
-        i = i + 1;
+        i++;
     }
     return None;
 }
@@ -252,7 +252,7 @@ export i32 atoi(char* s) {
         // value * 10 as shifts: the target has no multiply instruction, so
         // codegen would otherwise expand this into a repeated-add loop.
         value = (value << 3) + (value << 1) + (c - 48);
-        i = i + 1;
+        i++;
     }
 
     if (sign < 0) {
