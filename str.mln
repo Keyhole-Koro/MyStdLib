@@ -117,20 +117,23 @@ export i32 cat(char* dst, char* src) {
     return n + i;
 }
 
-// Index of the first occurrence of byte c, or -1.
-export i32 chr(char* s, i32 c) {
+// Index of the first occurrence of byte c.
+export Option<i32> chr(char* s, i32 c) {
     i32 i = 0;
     i32 want = c & 0xFF;
     while (s[i] != 0) {
         if (((i32)s[i] & 0xFF) == want) {
-            return i;
+            Option<i32> hit = Some(i);
+            return hit;
         }
         i = i + 1;
     }
     if (want == 0) {
-        return i;
+        Option<i32> hit = Some(i);
+        return hit;
     }
-    return -1;
+    Option<i32> none = None;
+    return none;
 }
 
 // Index of the first occurrence of needle in haystack, or -1.
