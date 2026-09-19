@@ -1,0 +1,121 @@
+package annotations;
+
+// The annotation metadata the compiler recorded, as an iterator over rows.
+//
+// `@name(args)` on a function or method is not a call: the compiler checks
+// it against the imported prototype and writes one row into the module's
+// `annotations` section (toolchain/MyLangCompiler/docs/grammar.md,
+// "Attributes and annotations"). The linker joins every module's rows into
+// one table, and this package walks it:
+//
+//     Annotations it = annotations.named("app");
+//     while (it.next()) {
+//         register(it.type(), it.size(), it.fn(), it.arg(0), it.text(1));
+//     }
+//
+// What a row means is the reader's business -- the framework that declared
+// the annotation. Rows of names a reader doesn't know are simply skipped.
+
+import { Slice, slice_len, slice_at } from "../memory/slice.mln";
+import { as_slice } from "../memory/section.mln";
+import str from "../str.mln";
+
+// One row, 8 words, exactly as the compiler lays it out.
+export struct AnnotationRow {
+    char *name;      // the annotation's name
+    i32 fn;          // the annotated function
+    char *type;      // receiver type's name; "" for a plain function
+    i32 size;        // sizeof that type; 0 for a plain function
+    i32 argc;        // arguments given (defaults filled in)
+    i32 a0;          // the arguments: a number, a bool as 0/1, or a char* as i32
+    i32 a1;
+    i32 a2;
+};
+
+// A cursor over the table, optionally filtered by name and/or receiver type.
+// next() advances; the accessors read the current row.
+export struct Annotations {
+    Slice<AnnotationRow> rows;
+    i32 index;           // next row to examine
+    char *want_name;     // 0: any
+    char *want_type;     // 0: any
+    AnnotationRow *cur;  // 0 before the first next() and after the last
+};
+
+Annotations make(char *name, char *type) {
+    Annotations it;
+    it.rows = as_slice<AnnotationRow>("annotations");
+    it.index = 0;
+    it.want_name = name;
+    it.want_type = type;
+    it.cur = (AnnotationRow*)0;
+    return it;
+}
+
+// Every row.
+export Annotations all() { return make((char*)0, (char*)0); }
+
+// Rows of one annotation: `named("timer")`.
+export Annotations named(char *name) { return make(name, (char*)0); }
+
+// Rows on one receiver type's methods: `of_type("Editor")`.
+export Annotations of_type(char *type) { return make((char*)0, type); }
+
+// Both filters; 0 for either means any: `where("key", "Editor")`.
+export Annotations where(char *name, char *type) { return make(name, type); }
+
+// Total number of rows in the table.
+export i32 count() {
+    Slice<AnnotationRow> rows = as_slice<AnnotationRow>("annotations");
+    return slice_len<AnnotationRow>(&rows);
+}
+
+// Advance to the next matching row. False when there is none.
+export bool (Annotations *it) next() {
+    while (it->index < slice_len<AnnotationRow>(&it->rows)) {
+        AnnotationRow *r = slice_at<AnnotationRow>(&it->rows, it->index);
+        it->index++;
+        if (it->want_name != 0 && !str.eq(r->name, it->want_name)) { continue; }
+        if (it->want_type != 0 && !str.eq(r->type, it->want_type)) { continue; }
+        it->cur = r;
+        return true;
+    }
+    it->cur = (AnnotationRow*)0;
+    return false;
+}
+
+// Start over.
+export void (Annotations *it) reset() {
+    it->index = 0;
+    it->cur = (AnnotationRow*)0;
+}
+
+// The current row, or 0.
+export AnnotationRow *(Annotations *it) row() { return it->cur; }
+
+export char *(Annotations *it) name() { if (it->cur == 0) { return ""; } return it->cur->name; }
+export i32 (Annotations *it) fn()      { if (it->cur == 0) { return 0; }  return it->cur->fn; }
+export char *(Annotations *it) type() { if (it->cur == 0) { return ""; } return it->cur->type; }
+export i32 (Annotations *it) size()    { if (it->cur == 0) { return 0; }  return it->cur->size; }
+export i32 (Annotations *it) argc()    { if (it->cur == 0) { return 0; }  return it->cur->argc; }
+
+// Argument k (0..2) as recorded: a number, or a bool as 0/1.
+export i32 (Annotations *it) arg(i32 k) {
+    if (it->cur == 0) { return 0; }
+    if (k == 0) { return it->cur->a0; }
+    if (k == 1) { return it->cur->a1; }
+    if (k == 2) { return it->cur->a2; }
+    return 0;
+}
+
+// Argument k as the string it was given as ("" if 0).
+export char *(Annotations *it) text(i32 k) {
+    i32 v = it->arg(k);
+    if (v == 0) { return ""; }
+    return (char*)v;
+}
+
+// Argument k as a flag.
+export bool (Annotations *it) flag(i32 k) {
+    return it->arg(k) != 0;
+}

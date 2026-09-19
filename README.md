@@ -3,7 +3,11 @@
 Shared MyLang standard library: generic containers (`Vec`, `Slice`, `Arena`,
 `RingBuffer`, `IntrusiveList`, `HashMap`, `Option`, `Result`) plus string,
 byte, bit-array, and assertion helpers (`str`, `bytes`, `bitset`, `strbuf`,
-`assert`).
+`assert`), and the readers of what the toolchain leaves in the image:
+`memory/section.mln` (a linker-collected section by name, as a `Slice<T>`)
+and `meta/annotations.mln` (the compiler's annotation metadata rows, as an
+iterator: `annotations.named("app")`, `it.next()`, `it.fn()`, ...; see
+`docs/design/toolchain-collected-sections.md` in MyComputer).
 
 Used by [MyKernel](https://github.com/Keyhole-Koro/MyKernel),
 [MyOS](https://github.com/Keyhole-Koro/MyOS), and exercised by
