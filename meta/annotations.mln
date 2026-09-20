@@ -15,9 +15,16 @@ package annotations;
 //
 // What a row means is the reader's business -- the framework that declared
 // the annotation. Rows of names a reader doesn't know are simply skipped.
+//
+// The same iterator reads the table of an executable image on disk
+// (in_image): a shell can list what an app declares -- `@app(name = ...)`
+// -- without loading it. The strings such rows point at are translated
+// from the image's virtual addresses; fn() stays what it is, an address in
+// the image's own space.
 
-import { Slice, slice_len, slice_at } from "../memory/slice.mln";
+import { Slice, slice_len, slice_at, slice_init } from "../memory/slice.mln";
 import { as_slice } from "../memory/section.mln";
+import mbin from "../format/mbin.mln";
 import str from "../str.mln";
 
 // One row, 8 words, exactly as the compiler lays it out.
@@ -40,6 +47,7 @@ export struct Annotations {
     char *want_name;     // 0: any
     char *want_type;     // 0: any
     AnnotationRow *cur;  // 0 before the first next() and after the last
+    char *image;         // 0: the running program's table; else the MBIN image the rows live in
 };
 
 Annotations make(char *name, char *type) {
@@ -49,7 +57,47 @@ Annotations make(char *name, char *type) {
     it.want_name = name;
     it.want_type = type;
     it.cur = (AnnotationRow*)0;
+    it.image = (char*)0;
     return it;
+}
+
+// The table of an executable image held in memory (a file read from disk;
+// see format/mbin.mln). Empty when the image has no annotations. Filter
+// with on().
+export Annotations in_image(char *image) {
+    Annotations it;
+    i32 off = mbin.section_offset(image, "annotations");
+    i32 len = 0;
+    AnnotationRow *data = (AnnotationRow*)0;
+    if (off >= 0) {
+        data = (AnnotationRow*)(&image[off]);
+        len = mbin.section_size(image, "annotations") / sizeof(AnnotationRow);
+    }
+    slice_init<AnnotationRow>(&it.rows, data, len);
+    it.index = 0;
+    it.want_name = (char*)0;
+    it.want_type = (char*)0;
+    it.cur = (AnnotationRow*)0;
+    it.image = image;
+    return it;
+}
+
+// Narrow to one annotation name and/or receiver type (0 = any), for an
+// iterator built by in_image().
+export void (Annotations *it) on(char *name, char *type) {
+    it->want_name = name;
+    it->want_type = type;
+    it->index = 0;
+    it->cur = (AnnotationRow*)0;
+}
+
+// A string the row points at, as a pointer this program can read.
+char *string_of(Annotations *it, char *s) {
+    if (it->image == 0) { return s; }
+    if (s == 0) { return ""; }
+    char *p = mbin.va_to_ptr(it->image, (i32)s);
+    if (p == 0) { return ""; }
+    return p;
 }
 
 // Every row.
@@ -75,8 +123,8 @@ export bool (Annotations *it) next() {
     while (it->index < slice_len<AnnotationRow>(&it->rows)) {
         AnnotationRow *r = slice_at<AnnotationRow>(&it->rows, it->index);
         it->index++;
-        if (it->want_name != 0 && !str.eq(r->name, it->want_name)) { continue; }
-        if (it->want_type != 0 && !str.eq(r->type, it->want_type)) { continue; }
+        if (it->want_name != 0 && !str.eq(string_of(it, r->name), it->want_name)) { continue; }
+        if (it->want_type != 0 && !str.eq(string_of(it, r->type), it->want_type)) { continue; }
         it->cur = r;
         return true;
     }
@@ -93,9 +141,9 @@ export void (Annotations *it) reset() {
 // The current row, or 0.
 export AnnotationRow *(Annotations *it) row() { return it->cur; }
 
-export char *(Annotations *it) name() { if (it->cur == 0) { return ""; } return it->cur->name; }
+export char *(Annotations *it) name() { if (it->cur == 0) { return ""; } return string_of(it, it->cur->name); }
 export i32 (Annotations *it) fn()      { if (it->cur == 0) { return 0; }  return it->cur->fn; }
-export char *(Annotations *it) type() { if (it->cur == 0) { return ""; } return it->cur->type; }
+export char *(Annotations *it) type() { if (it->cur == 0) { return ""; } return string_of(it, it->cur->type); }
 export i32 (Annotations *it) size()    { if (it->cur == 0) { return 0; }  return it->cur->size; }
 export i32 (Annotations *it) argc()    { if (it->cur == 0) { return 0; }  return it->cur->argc; }
 
@@ -112,7 +160,7 @@ export i32 (Annotations *it) arg(i32 k) {
 export char *(Annotations *it) text(i32 k) {
     i32 v = it->arg(k);
     if (v == 0) { return ""; }
-    return (char*)v;
+    return string_of(it, (char*)v);
 }
 
 // Argument k as a flag.

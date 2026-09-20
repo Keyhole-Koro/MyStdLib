@@ -1,0 +1,113 @@
+package mbin;
+
+// Reading an MBIN executable image from a buffer -- a file loaded from
+// disk, not a mapped process (toolchain/MyLinker/inc/ObjectFormat.h,
+// docs/design/mbin-executable-header.md).
+//
+//     char *image = ...;                       // the whole file
+//     if (mbin.is_image(image, size)) {
+//         i32 off = mbin.section_offset(image, "annotations");   // -1 if none
+//         i32 len = mbin.section_size(image, "annotations");
+//     }
+//
+// The header's section directory (version 2) is the linker's `__sections`
+// table: [name (char*), start, size] rows ending in a zero row, with the
+// name strings after it. Its addresses are virtual -- where the image runs
+// -- so to read anything it names from the file, translate with
+// va_to_offset(): text is mapped at entry & ~0xFFF, data at the page after
+// the text, which is what the kernel loader does too.
+
+import str from "../str.mln";
+
+i32 MAGIC = 0x4D42494E;   // 'MBIN'
+
+i32 be32(char *p, i32 at) {
+    i32 b0 = p[at] & 0xFF;
+    i32 b1 = p[at + 1] & 0xFF;
+    i32 b2 = p[at + 2] & 0xFF;
+    i32 b3 = p[at + 3] & 0xFF;
+    return (b0 << 24) | (b1 << 16) | (b2 << 8) | b3;
+}
+
+i32 page_up(i32 v) {
+    i32 rem = v & 4095;
+    if (rem == 0) { return v; }
+    return (v - rem) + 4096;
+}
+
+// Whether `size` bytes at `image` begin with an MBIN header.
+export bool is_image(char *image, i32 size) {
+    if (size < 32) { return false; }
+    return be32(image, 0) == MAGIC;
+}
+
+export i32 version(char *image)      { return be32(image, 4); }
+export i32 entry(char *image)        { return be32(image, 8); }
+export i32 text_offset(char *image)  { return be32(image, 12); }
+export i32 text_size(char *image)    { return be32(image, 16); }
+export i32 data_offset(char *image)  { return be32(image, 20); }
+export i32 data_size(char *image)    { return be32(image, 24); }
+export i32 bss_size(char *image)     { return be32(image, 28); }
+
+// File offset of the section directory; 0 when the image has none (or is
+// header version 1, which has no directory).
+export i32 sections_offset(char *image) {
+    if (version(image) < 2) { return 0; }
+    return be32(image, 32);
+}
+
+// Where the text segment is mapped when the image runs.
+export i32 text_vaddr(char *image) { return entry(image) & 0xFFFFF000; }
+
+// Where the data segment is mapped: the page after the text.
+export i32 data_vaddr(char *image) { return text_vaddr(image) + page_up(text_size(image)); }
+
+// The file offset holding virtual address `va`, or -1 if it is outside
+// the text and data segments.
+export i32 va_to_offset(char *image, i32 va) {
+    i32 tv = text_vaddr(image);
+    i32 ts = text_size(image);
+    if (va >= tv && va < tv + ts) { return text_offset(image) + (va - tv); }
+    i32 dv = data_vaddr(image);
+    i32 ds = data_size(image);
+    if (va >= dv && va < dv + ds) { return data_offset(image) + (va - dv); }
+    return -1;
+}
+
+// A pointer into the buffer for virtual address `va`, or 0.
+export char *va_to_ptr(char *image, i32 va) {
+    i32 off = va_to_offset(image, va);
+    if (off < 0) { return (char*)0; }
+    return &image[off];
+}
+
+// Directory row of the section called `name`: its file offset, or -1.
+i32 find_row(char *image, char *name) {
+    i32 dir = sections_offset(image);
+    if (dir == 0) { return -1; }
+    i32 row = dir;
+    while (be32(image, row) != 0) {
+        char *n = va_to_ptr(image, be32(image, row));
+        if (n != 0) {
+            if (str.eq(n, name)) { return row; }
+        }
+        row = row + 12;
+    }
+    return -1;
+}
+
+export bool has_section(char *image, char *name) { return find_row(image, name) >= 0; }
+
+// File offset of the section's first byte, or -1.
+export i32 section_offset(char *image, char *name) {
+    i32 row = find_row(image, name);
+    if (row < 0) { return -1; }
+    return va_to_offset(image, be32(image, row + 4));
+}
+
+// Byte count of the section, or 0.
+export i32 section_size(char *image, char *name) {
+    i32 row = find_row(image, name);
+    if (row < 0) { return 0; }
+    return be32(image, row + 8);
+}
