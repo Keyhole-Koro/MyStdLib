@@ -18,7 +18,8 @@ Used by [MyKernel](https://github.com/Keyhole-Koro/MyKernel),
 import tests. See [GENERICS.md](GENERICS.md) for the generic container API.
 
 Every module is imported by explicit relative path (there is no implicit
-prelude): `import { Vec, vec_init, vec_push, vec_pop } from "vec.mln";`.
+prelude): `import { Vec } from "vec.mln";` -- a type's exported methods
+(`v.push(x)`, `s.len()`) travel with it.
 
 `assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it

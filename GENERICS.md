@@ -1,22 +1,32 @@
 # Generic containers
 
 Each of these modules is independently importable through the compiler's
-named generic import support. Import every template used by a specialization,
-including its container type:
+named generic import support. The containers are **methods on the type**:
+importing the type is all it takes -- its methods come with it, and there
+is no per-function import and no explicit `<T>` at the call site.
 
 ```mln
-import { Vec, vec_init, vec_push, vec_pop } from "vec.mln";
+import { Vec } from "vec.mln";
 
 i32 main() {
     i32 storage[8];
     Vec<i32> values;
-    vec_init<i32>(&values, &storage[0], 8);
-    vec_push<i32>(&values, 42);
+    values.init(&storage[0], storage.length);
+    values.push(42);
     i32 value = 0;
-    vec_pop<i32>(&values, &value);
+    values.pop(&value);
     return value;
 }
 ```
+
+| Type | Methods |
+| --- | --- |
+| `Slice<T>` | `init(data, len)`, `len()`, `at(i)` → `T *` or 0 |
+| `Vec<T>` | `init(storage, cap)`, `len()`, `push(v)` → bool, `pop(&out)` → bool, `at(i)` |
+| `Arena<T>` | `init(storage, cap)`, `reset()`, `alloc(count)` → `T *` or 0 |
+| `RingBuffer<T>` | `init(storage, cap)`, `capacity()`, `count()`, `has()`, `full()`, `push(v)`, `pop(&out)`, `peek(&out)`, `clear()` |
+| `HashMap<T>` | `init(keys, values, cap)`, `put(key, v)` → bool, `get(key, &out)` → bool |
+| `IntrusiveList<T>` | `init()`, `push_front(node, &node->next)`, `pop_front(&head->next)` |
 
 | Module | Contents |
 | --- | --- |

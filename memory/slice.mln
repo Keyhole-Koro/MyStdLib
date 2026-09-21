@@ -1,21 +1,26 @@
 // Borrowed contiguous range over caller-owned storage.
+//
+//     Slice<i32> s;
+//     s.init(storage, 4);
+//     i32 n = s.len();
+//     i32 *p = s.at(2);     // 0 when out of range
 export struct Slice<T> {
     T *data;
     i32 len;
 };
 
-export void slice_init<T>(Slice<T> *slice, T *data, i32 len) {
-    slice->data = data;
-    slice->len = len;
+export void (Slice<T> *s) init(T *data, i32 len) {
+    s->data = data;
+    s->len = len;
 }
 
-export i32 slice_len<T>(Slice<T> *slice) {
-    return slice->len;
+export i32 (Slice<T> *s) len() {
+    return s->len;
 }
 
-export T *slice_at<T>(Slice<T> *slice, i32 index) {
-    if (index < 0 || index >= slice->len) {
+export T *(Slice<T> *s) at(i32 index) {
+    if (index < 0 || index >= s->len) {
         return (T *)0;
     }
-    return slice->data + index;
+    return s->data + index;
 }

@@ -15,7 +15,7 @@ package section;
 //
 // The compiler's own use is the annotation metadata table (meta/annotations.mln).
 
-import { Slice, slice_init } from "slice.mln";
+import { Slice } from "slice.mln";
 import str from "../str.mln";
 
 extern i32 __sections[];
@@ -58,6 +58,6 @@ export Slice<T> as_slice<T>(char *name) {
     T *data = (T*)start(name);
     i32 len = 0;
     if (data != 0) { len = size(name) / sizeof(T); }
-    slice_init<T>(&s, data, len);
+    s.init(data, len);
     return s;
 }

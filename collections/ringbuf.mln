@@ -1,5 +1,11 @@
 // Fixed-capacity FIFO over caller-owned storage. One slot remains empty to
 // distinguish full from empty, so usable capacity is `cap - 1`.
+//
+//     RingBuffer<char> r;
+//     r.init(storage, 64);
+//     r.push('a');          // false when full
+//     char c;
+//     if (r.pop(&c)) { ... }
 export struct RingBuffer<T> {
     T *data;
     i32 cap;
@@ -7,81 +13,81 @@ export struct RingBuffer<T> {
     i32 tail;
 };
 
-export void ring_init<T>(RingBuffer<T> *ring, T *storage, i32 cap) {
-    ring->data = storage;
-    ring->cap = cap;
-    ring->head = 0;
-    ring->tail = 0;
+export void (RingBuffer<T> *r) init(T *storage, i32 cap) {
+    r->data = storage;
+    r->cap = cap;
+    r->head = 0;
+    r->tail = 0;
 }
 
-export i32 ring_capacity<T>(RingBuffer<T> *ring) {
-    return ring->cap - 1;
+export i32 (RingBuffer<T> *r) capacity() {
+    return r->cap - 1;
 }
 
-export i32 ring_count<T>(RingBuffer<T> *ring) {
-    if (ring->tail >= ring->head) {
-        return ring->tail - ring->head;
+export i32 (RingBuffer<T> *r) count() {
+    if (r->tail >= r->head) {
+        return r->tail - r->head;
     }
-    return ring->cap - ring->head + ring->tail;
+    return r->cap - r->head + r->tail;
 }
 
-export bool ring_has<T>(RingBuffer<T> *ring) {
-    if (ring->head == ring->tail) {
+export bool (RingBuffer<T> *r) has() {
+    if (r->head == r->tail) {
         return false;
     }
     return true;
 }
 
-export bool ring_full<T>(RingBuffer<T> *ring) {
-    i32 next = ring->tail + 1;
-    if (next >= ring->cap) {
+export bool (RingBuffer<T> *r) full() {
+    i32 next = r->tail + 1;
+    if (next >= r->cap) {
         next = 0;
     }
-    if (next == ring->head) {
+    if (next == r->head) {
         return true;
     }
     return false;
 }
 
-export bool ring_push<T>(RingBuffer<T> *ring, T value) {
-    i32 next = ring->tail + 1;
-    if (next >= ring->cap) {
+export bool (RingBuffer<T> *r) push(T value) {
+    i32 next = r->tail + 1;
+    if (next >= r->cap) {
         next = 0;
     }
-    if (next == ring->head) {
+    if (next == r->head) {
         return false;
     }
-    T *data = ring->data;
-    data[ring->tail] = value;
-    ring->tail = next;
+    T *data = r->data;
+    data[r->tail] = value;
+    r->tail = next;
     return true;
 }
 
-export bool ring_pop<T>(RingBuffer<T> *ring, T *out) {
-    if (ring->head == ring->tail) {
+export bool (RingBuffer<T> *r) pop(T *out) {
+    if (r->head == r->tail) {
         return false;
     }
-    T *data = ring->data;
-    *out = data[ring->head];
-    ring->head = ring->head + 1;
-    if (ring->head >= ring->cap) {
-        ring->head = 0;
+    T *data = r->data;
+    *out = data[r->head];
+    r->head = r->head + 1;
+    if (r->head >= r->cap) {
+        r->head = 0;
     }
     return true;
 }
 
 // Read the oldest value without removing it. Leaves *out untouched when empty.
-export bool ring_peek<T>(RingBuffer<T> *ring, T *out) {
-    if (ring->head == ring->tail) {
+export bool (RingBuffer<T> *r) peek(T *out) {
+    if (r->head == r->tail) {
         return false;
     }
-    T *data = ring->data;
-    *out = data[ring->head];
+    T *data = r->data;
+    *out = data[r->head];
     return true;
 }
 
 // Discard every queued value.
-export void ring_clear<T>(RingBuffer<T> *ring) {
-    ring->head = 0;
-    ring->tail = 0;
+export void (RingBuffer<T> *r) clear() {
+    r->head = 0;
+    r->tail = 0;
 }

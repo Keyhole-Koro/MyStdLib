@@ -1,43 +1,48 @@
 // Fixed-capacity vector over caller-owned storage.
+//
+//     Vec<i32> v;
+//     v.init(storage, 8);
+//     v.push(3);            // false when full
+//     i32 *p = v.at(0);     // 0 when out of range
 export struct Vec<T> {
     T *data;
     i32 len;
     i32 cap;
 };
 
-export void vec_init<T>(Vec<T> *vec, T *storage, i32 cap) {
-    vec->data = storage;
-    vec->len = 0;
-    vec->cap = cap;
+export void (Vec<T> *v) init(T *storage, i32 cap) {
+    v->data = storage;
+    v->len = 0;
+    v->cap = cap;
 }
 
-export i32 vec_len<T>(Vec<T> *vec) {
-    return vec->len;
+export i32 (Vec<T> *v) len() {
+    return v->len;
 }
 
-export bool vec_push<T>(Vec<T> *vec, T value) {
-    if (vec->len >= vec->cap) {
+export bool (Vec<T> *v) push(T value) {
+    if (v->len >= v->cap) {
         return false;
     }
-    T *data = vec->data;
-    data[vec->len] = value;
-    vec->len++;
+    T *data = v->data;
+    data[v->len] = value;
+    v->len++;
     return true;
 }
 
-export bool vec_pop<T>(Vec<T> *vec, T *out) {
-    if (vec->len == 0) {
+export bool (Vec<T> *v) pop(T *out) {
+    if (v->len == 0) {
         return false;
     }
-    vec->len--;
-    T *data = vec->data;
-    *out = data[vec->len];
+    v->len--;
+    T *data = v->data;
+    *out = data[v->len];
     return true;
 }
 
-export T *vec_at<T>(Vec<T> *vec, i32 index) {
-    if (index < 0 || index >= vec->len) {
+export T *(Vec<T> *v) at(i32 index) {
+    if (index < 0 || index >= v->len) {
         return (T *)0;
     }
-    return vec->data + index;
+    return v->data + index;
 }

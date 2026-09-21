@@ -22,7 +22,7 @@ package annotations;
 // from the image's virtual addresses; fn() stays what it is, an address in
 // the image's own space.
 
-import { Slice, slice_len, slice_at, slice_init } from "../memory/slice.mln";
+import { Slice } from "../memory/slice.mln";
 import { as_slice } from "../memory/section.mln";
 import mbin from "../format/mbin.mln";
 import str from "../str.mln";
@@ -73,7 +73,7 @@ export Annotations in_image(char *image) {
         data = (AnnotationRow*)(&image[off]);
         len = mbin.section_size(image, "annotations") / sizeof(AnnotationRow);
     }
-    slice_init<AnnotationRow>(&it.rows, data, len);
+    it.rows.init(data, len);
     it.index = 0;
     it.want_name = (char*)0;
     it.want_type = (char*)0;
@@ -115,13 +115,13 @@ export Annotations where(char *name, char *type) { return make(name, type); }
 // Total number of rows in the table.
 export i32 count() {
     Slice<AnnotationRow> rows = as_slice<AnnotationRow>("annotations");
-    return slice_len<AnnotationRow>(&rows);
+    return rows.len();
 }
 
 // Advance to the next matching row. False when there is none.
 export bool (Annotations *it) next() {
-    while (it->index < slice_len<AnnotationRow>(&it->rows)) {
-        AnnotationRow *r = slice_at<AnnotationRow>(&it->rows, it->index);
+    while (it->index < it->rows.len()) {
+        AnnotationRow *r = it->rows.at(it->index);
         it->index++;
         if (it->want_name != 0 && !str.eq(string_of(it, r->name), it->want_name)) { continue; }
         if (it->want_type != 0 && !str.eq(string_of(it, r->type), it->want_type)) { continue; }

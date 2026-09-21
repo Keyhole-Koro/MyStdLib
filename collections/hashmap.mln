@@ -1,5 +1,11 @@
 // Fixed-capacity string-keyed map. Keys are borrowed NUL-terminated strings;
 // capacity must be a power of two. Deletion and automatic growth are omitted.
+//
+//     HashMap<i32> m;
+//     m.init(keys, values, 8);
+//     m.put("answer", 42);
+//     i32 v;
+//     if (m.get("answer", &v)) { ... }
 export struct HashMap<T> {
     i32 *keys;
     T *values;
@@ -7,7 +13,7 @@ export struct HashMap<T> {
     i32 len;
 };
 
-export void hashmap_init<T>(HashMap<T> *map, i32 *keys, T *values, i32 cap) {
+export void (HashMap<T> *map) init(i32 *keys, T *values, i32 cap) {
     map->keys = keys;
     map->values = values;
     map->len = 0;
@@ -23,7 +29,7 @@ export void hashmap_init<T>(HashMap<T> *map, i32 *keys, T *values, i32 cap) {
     }
 }
 
-export bool hashmap_put<T>(HashMap<T> *map, char *key, T value) {
+export bool (HashMap<T> *map) put(char *key, T value) {
     if (map->cap <= 0) {
         return false;
     }
@@ -67,7 +73,7 @@ export bool hashmap_put<T>(HashMap<T> *map, char *key, T value) {
     return false;
 }
 
-export bool hashmap_get<T>(HashMap<T> *map, char *key, T *out) {
+export bool (HashMap<T> *map) get(char *key, T *out) {
     if (map->cap <= 0) {
         return false;
     }
