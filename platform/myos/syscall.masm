@@ -1,0 +1,40 @@
+; MyOS syscall bindings for hosted standard-library and SDK code.
+; The MyLang calling convention puts arguments in r5/r6/r7 and the result
+; in r1. Numbers must match contracts/myos/syscall.contract.mln.
+export os_call
+export sys_yield
+export sys_exit
+export sys_sbrk
+export sys_wait_notification
+
+; i32 os_call(i32 service, i32 args)  -- Syscall::OS_CALL
+os_call:
+  movi r1, 10
+  syscall
+  mov pc, lr
+
+; void sys_yield()  -- Syscall::YIELD
+sys_yield:
+  movi r1, 8
+  syscall
+  mov pc, lr
+
+; void sys_exit(i32 code)  -- Syscall::EXIT
+sys_exit:
+  movi r1, 1
+  syscall
+  mov pc, lr
+
+; i32 sys_sbrk(i32 increment)  -- Syscall::SBRK
+sys_sbrk:
+  movi r1, 7
+  syscall
+  mov pc, lr
+
+; void sys_wait_notification(i32 mask) -- Syscall::WAIT_NOTIFICATION
+; The kernel either consumes an already-pending armed signal or blocks this
+; task. The caller rechecks the queue after returning.
+sys_wait_notification:
+  movi r1, 11
+  syscall
+  mov pc, lr

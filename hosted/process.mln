@@ -1,0 +1,59 @@
+package process;
+
+// Generic process control for hosted MyLang programs. UI-specific stdout
+// binding remains in MyAppFramework's terminal integration.
+
+import { os_call } from "../platform/myos/syscall.masm";
+import { OsService } from "../../../contracts/myos/services.contract.mln";
+import { Result } from "../result.mln";
+import { SpawnError } from "../../../contracts/process/spawn.contract.mln";
+import { ProcessControlError, ProcessExitStatus } from "../../../contracts/process/control.contract.mln";
+import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs } from "../../../contracts/myos/process-args.contract.mln";
+
+/** Start an executable process.
+ * @param path NUL-terminated executable path.
+ * @return New process ID, or the detailed spawn error.
+ */
+export Result<i32, SpawnError> spawn(char *path) {
+    Result<i32, SpawnError> result;
+    ProcSpawnArgs<Result<i32, SpawnError>> args = ProcSpawnArgs<Result<i32, SpawnError>> {
+        path: path, stdout_node: 0, result_out: &result
+    };
+    os_call(OsService::PROC_SPAWN, (i32)(&args));
+    return result;
+}
+
+/** Check whether a process has exited.
+ * @param pid Process ID to query.
+ * @return True if exited, false if still running, or a process-control error.
+ */
+export Result<bool, ProcessControlError> has_exited(i32 pid) {
+    Result<bool, ProcessControlError> result;
+    ProcExitedArgs<Result<bool, ProcessControlError>> args = ProcExitedArgs<Result<bool, ProcessControlError>> {
+        pid: pid, result_out: &result
+    };
+    os_call(OsService::PROC_EXITED, (i32)(&args));
+    return result;
+}
+
+/** Reap an exited process and retrieve its typed termination status.
+ * @param pid Process ID to reap.
+ * @return Application exit code or kernel termination reason, or a process-control error.
+ */
+export Result<ProcessExitStatus, ProcessControlError> reap(i32 pid) {
+    Result<ProcessExitStatus, ProcessControlError> result;
+    ProcReapArgs<Result<ProcessExitStatus, ProcessControlError>> args = ProcReapArgs<Result<ProcessExitStatus, ProcessControlError>> {
+        pid: pid, result_out: &result
+    };
+    os_call(OsService::PROC_REAP, (i32)(&args));
+    return result;
+}
+
+/** Send an input line to a process.
+ * @param pid Recipient process ID.
+ * @param line NUL-terminated line to deliver.
+ */
+export void feed_line(i32 pid, char *line) {
+    ProcFeedArgs args = ProcFeedArgs { pid: pid, line: line };
+    os_call(OsService::PROC_FEED, (i32)(&args));
+}

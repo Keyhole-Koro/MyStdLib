@@ -1,0 +1,9 @@
+package hosted_log;
+
+import { os_call } from "../platform/myos/syscall.masm";
+import { OsService } from "../../../contracts/myos/services.contract.mln";
+
+/** Write a message to the hosted OS diagnostic log.
+ * @param message NUL-terminated diagnostic text.
+ */
+export void write(char *message) { os_call(OsService::LOG, (i32)message); }

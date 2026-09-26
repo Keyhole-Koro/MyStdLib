@@ -1,0 +1,163 @@
+package fs;
+
+// Filesystem API for a hosted MyLang program. This is the client side of
+// MyOS's filesystem service, not the filesystem implementation.
+
+import { os_call } from "../platform/myos/syscall.masm";
+import { OsService } from "../../../contracts/myos/services.contract.mln";
+import { Result } from "../result.mln";
+import { Option } from "../option.mln";
+import { FsError, SeekWhence } from "../../../contracts/io/fs.contract.mln";
+import {
+    FsOpenArgs, FsCreateArgs, FsMkdirArgs, FsRemoveArgs, FsReadArgs,
+    FsWriteArgs, FsSeekArgs, FsCloseArgs, FsDirNextArgs,
+    FsEntrySizeArgs, FsIsDirArgs
+} from "../../../contracts/myos/fs-args.contract.mln";
+
+export i32 NAME_MAX = 16;
+/** Open a filesystem path.
+ * @param path NUL-terminated path to open.
+ * @return File descriptor on success, or the filesystem error.
+ */
+export Result<i32, FsError> open(char *path) {
+    Result<i32, FsError> result;
+    FsOpenArgs<Result<i32, FsError>> args = FsOpenArgs<Result<i32, FsError>> {
+        path: path, result_out: &result
+    };
+    os_call(OsService::FS_OPEN, (i32)(&args));
+    return result;
+}
+
+/** Create and open a filesystem path.
+ * @param path NUL-terminated path to create.
+ * @return File descriptor on success, or the filesystem error.
+ */
+export Result<i32, FsError> create(char *path) {
+    Result<i32, FsError> result;
+    FsCreateArgs<Result<i32, FsError>> args = FsCreateArgs<Result<i32, FsError>> {
+        path: path, result_out: &result
+    };
+    os_call(OsService::FS_CREATE, (i32)(&args));
+    return result;
+}
+
+/** Read bytes from an open file.
+ * @param fd File descriptor.
+ * @param buf Destination buffer address.
+ * @param size Maximum number of bytes to read.
+ * @return Bytes read, including zero at end of file, or the filesystem error.
+ */
+export Result<i32, FsError> read(i32 fd, i32 buf, i32 size) {
+    Result<i32, FsError> result;
+    FsReadArgs<Result<i32, FsError>> args = FsReadArgs<Result<i32, FsError>> {
+        fd: fd, buffer: (char*)buf, size: size, result_out: &result
+    };
+    os_call(OsService::FS_READ, (i32)(&args));
+    return result;
+}
+
+/** Write bytes to an open file.
+ * @param fd File descriptor.
+ * @param buf Source buffer address.
+ * @param size Number of bytes to write.
+ * @return Bytes written, or the filesystem error.
+ */
+export Result<i32, FsError> write(i32 fd, i32 buf, i32 size) {
+    Result<i32, FsError> result;
+    FsWriteArgs<Result<i32, FsError>> args = FsWriteArgs<Result<i32, FsError>> {
+        fd: fd, buffer: (char*)buf, size: size, result_out: &result
+    };
+    os_call(OsService::FS_WRITE, (i32)(&args));
+    return result;
+}
+
+/** Move the file cursor.
+ * @param fd File descriptor.
+ * @param offset Signed offset relative to whence.
+ * @param whence Reference point for the offset.
+ * @return New absolute file offset, or the filesystem error.
+ */
+export Result<i32, FsError> seek(i32 fd, i32 offset, SeekWhence whence) {
+    Result<i32, FsError> result;
+    FsSeekArgs<Result<i32, FsError>> args = FsSeekArgs<Result<i32, FsError>> {
+        fd: fd, offset: offset, whence: whence, result_out: &result
+    };
+    os_call(OsService::FS_SEEK, (i32)(&args));
+    return result;
+}
+
+/** Close an open file descriptor.
+ * @param fd File descriptor to close.
+ */
+export void close(i32 fd) {
+    FsCloseArgs args = FsCloseArgs { fd: fd };
+    os_call(OsService::FS_CLOSE, (i32)(&args));
+}
+
+/** Remove a filesystem entry.
+ * @param path NUL-terminated path of the entry to remove.
+ * @return Ok on success, or the filesystem error.
+ */
+export Result<_, FsError> remove(char *path) {
+    Result<_, FsError> result;
+    FsRemoveArgs<Result<_, FsError>> args = FsRemoveArgs<Result<_, FsError>> {
+        path: path, result_out: &result
+    };
+    os_call(OsService::FS_REMOVE, (i32)(&args));
+    return result;
+}
+
+/** Create a directory.
+ * @param path NUL-terminated directory path.
+ * @return Directory entry index, or the filesystem error.
+ */
+export Result<i32, FsError> mkdir(char *path) {
+    Result<i32, FsError> result;
+    FsMkdirArgs<Result<i32, FsError>> args = FsMkdirArgs<Result<i32, FsError>> {
+        path: path, result_out: &result
+    };
+    os_call(OsService::FS_MKDIR, (i32)(&args));
+    return result;
+}
+
+/** Find the next directory entry and copy its name to out.
+ * @param dir NUL-terminated directory path.
+ * @param start Entry index at which to begin searching.
+ * @param out Destination for the entry name.
+ * @param cap Capacity of out in bytes, including the terminator.
+ * @return Ok(Some(index)) when found, Ok(None) at end, or Err on failure.
+ */
+export Result<Option<i32>, FsError> dir_next_at(char *dir, i32 start, char *out, i32 cap) {
+    Result<Option<i32>, FsError> result;
+    FsDirNextArgs<Result<Option<i32>, FsError>> args = FsDirNextArgs<Result<Option<i32>, FsError>> {
+        path: dir, start: start, name_out: out, name_cap: cap, result_out: &result
+    };
+    os_call(OsService::FS_DIR_NEXT_AT, (i32)(&args));
+    return result;
+}
+
+/** Check whether a filesystem entry is a directory.
+ * @param idx Filesystem entry index.
+ * @return True if it is a directory, or the filesystem error.
+ */
+export Result<bool, FsError> is_dir(i32 idx) {
+    Result<bool, FsError> result;
+    FsIsDirArgs<Result<bool, FsError>> args = FsIsDirArgs<Result<bool, FsError>> {
+        entry: idx, result_out: &result
+    };
+    os_call(OsService::FS_IS_DIR, (i32)(&args));
+    return result;
+}
+
+/** Get the byte size of a filesystem entry.
+ * @param idx Filesystem entry index.
+ * @return Entry size in bytes, or the filesystem error.
+ */
+export Result<i32, FsError> entry_size(i32 idx) {
+    Result<i32, FsError> result;
+    FsEntrySizeArgs<Result<i32, FsError>> args = FsEntrySizeArgs<Result<i32, FsError>> {
+        entry: idx, result_out: &result
+    };
+    os_call(OsService::FS_ENTRY_SIZE, (i32)(&args));
+    return result;
+}

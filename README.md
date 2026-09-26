@@ -12,6 +12,22 @@ section directory, virtual-address translation) and `meta/annotations.mln`
 reads the table of an executable on disk; see
 `docs/design/toolchain-collected-sections.md` in MyComputer).
 
+Hosted modules:
+
+| module | role |
+| --- | --- |
+| `hosted/fs.mln` | `Result`-based filesystem client API |
+| `hosted/process.mln` | generic process client API; `spawn()` returns `Result<i32, SpawnError>` |
+| `hosted/log.mln` | hosted diagnostic output |
+| `platform/myos/syscall.masm` | MyOS syscall trap binding |
+
+Shared contracts used by hosted modules:
+
+| contract | role |
+| --- | --- |
+| `contracts/io/fs.contract.mln` | `FsError` and `SeekWhence` |
+| `contracts/myos/services.contract.mln` | OS_CALL service numbers |
+
 Used by [MyKernel](https://github.com/Keyhole-Koro/MyKernel),
 [MyOS](https://github.com/Keyhole-Koro/MyOS), and exercised by
 [MyLangCompiler](https://github.com/Keyhole-Koro/MyLangCompiler)'s generic
