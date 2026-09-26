@@ -18,13 +18,20 @@ import str from "../str.mln";
 // length against what it appended.
 
 
-// Empty the buffer. Returns the new length, always 0.
+/** Clear the string buffer.
+ * @param buf Buffer to clear; it must have at least one byte.
+ * @return New length, always zero.
+ */
 export i32 reset(char* buf) {
     buf[0] = 0;
     return 0;
 }
 
-// Bytes that can still be appended before truncation begins.
+/** Compute remaining visible capacity before truncation.
+ * @param cap Buffer capacity including space for the terminator.
+ * @param len Current visible string length.
+ * @return Remaining appendable bytes, or zero when no space remains.
+ */
 export i32 space(i32 cap, i32 len) {
     i32 left = cap - 1 - len;
     if (left < 0) {
@@ -34,6 +41,13 @@ export i32 space(i32 cap, i32 len) {
 }
 
 // Append one byte. Returns the new length.
+/** Append one byte to the string buffer.
+ * @param buf Destination buffer.
+ * @param cap Capacity including the terminator slot.
+ * @param len Current string length.
+ * @param c Byte value to append; only its low 8 bits are used.
+ * @return New string length; unchanged when full.
+ */
 export i32 push(char* buf, i32 cap, i32 len, i32 c) {
     if (len >= cap - 1) {
         return len;
@@ -45,6 +59,13 @@ export i32 push(char* buf, i32 cap, i32 len, i32 c) {
 
 // Append a NUL-terminated string, truncating at capacity.
 // Returns the new length.
+/** Append a NUL-terminated string, truncating when the buffer fills.
+ * @param buf Destination buffer.
+ * @param cap Capacity including the terminator slot.
+ * @param len Current string length.
+ * @param s NUL-terminated source string.
+ * @return New string length.
+ */
 export i32 append(char* buf, i32 cap, i32 len, char* s) {
     i32 n = len;
     i32 i = 0;
@@ -61,6 +82,14 @@ export i32 append(char* buf, i32 cap, i32 len, char* s) {
 }
 
 // Append at most `max` bytes of s. Returns the new length.
+/** Append up to max bytes from s, truncating when the buffer fills.
+ * @param buf Destination buffer.
+ * @param cap Capacity including the terminator slot.
+ * @param len Current string length.
+ * @param s Source string.
+ * @param max Maximum number of source bytes to append.
+ * @return New string length.
+ */
 export i32 append_n(char* buf, i32 cap, i32 len, char* s, i32 max) {
     i32 n = len;
     i32 i = 0;
@@ -80,6 +109,13 @@ export i32 append_n(char* buf, i32 cap, i32 len, char* s, i32 max) {
 }
 
 // Append value in base 10. Returns the new length.
+/** Append an integer in decimal notation.
+ * @param buf Destination buffer.
+ * @param cap Capacity including the terminator slot.
+ * @param len Current string length.
+ * @param value Integer to append.
+ * @return New string length.
+ */
 export i32 append_i32(char* buf, i32 cap, i32 len, i32 value) {
     char tmp[12];
     str.itoa(value, &tmp[0]);
@@ -87,6 +123,13 @@ export i32 append_i32(char* buf, i32 cap, i32 len, i32 value) {
 }
 
 // Append value in base 16, lowercase and unprefixed. Returns the new length.
+/** Append an integer in lowercase hexadecimal without a prefix.
+ * @param buf Destination buffer.
+ * @param cap Capacity including the terminator slot.
+ * @param len Current string length.
+ * @param value Integer to append.
+ * @return New string length.
+ */
 export i32 append_hex(char* buf, i32 cap, i32 len, i32 value) {
     char tmp[12];
     str.xtoa(value, &tmp[0]);
@@ -94,6 +137,14 @@ export i32 append_hex(char* buf, i32 cap, i32 len, i32 value) {
 }
 
 // Append the same byte n times, e.g. to pad a column. Returns the new length.
+/** Append the same byte up to n times or until the buffer fills.
+ * @param buf Destination buffer.
+ * @param cap Capacity including the terminator slot.
+ * @param len Current string length.
+ * @param c Byte value to append; only its low 8 bits are used.
+ * @param n Maximum repetition count.
+ * @return New string length.
+ */
 export i32 append_repeat(char* buf, i32 cap, i32 len, i32 c, i32 n) {
     i32 written = len;
     i32 i = 0;
@@ -110,6 +161,12 @@ export i32 append_repeat(char* buf, i32 cap, i32 len, i32 c, i32 n) {
 }
 
 // Drop the last n bytes. Returns the new length.
+/** Remove up to n trailing bytes from the string.
+ * @param buf String buffer to truncate.
+ * @param len Current string length.
+ * @param n Number of trailing bytes to remove.
+ * @return New string length, clamped to zero.
+ */
 export i32 truncate(char* buf, i32 len, i32 n) {
     i32 kept = len - n;
     if (kept < 0) {

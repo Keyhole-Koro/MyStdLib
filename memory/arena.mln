@@ -1,5 +1,9 @@
-// Typed bump allocator over caller-owned storage. Reset invalidates all prior
-// allocations and allocation returns NULL on exhaustion.
+/** Typed bump allocator over caller-owned storage.
+ * Reset invalidates every pointer previously returned by alloc().
+ * @property data Pointer to caller-owned storage.
+ * @property cap Total number of elements in storage.
+ * @property used Number of elements already reserved.
+ */
 //
 //     Arena<Node> a;
 //     a.init(storage, 16);
@@ -11,16 +15,27 @@ export struct Arena<T> {
     i32 used;
 };
 
+/** Initialize an empty arena.
+ * @param storage Caller-owned storage for cap elements.
+ * @param cap Number of available elements.
+ */
 export void (Arena<T> *a) init(T *storage, i32 cap) {
     a->data = storage;
     a->cap = cap;
     a->used = 0;
 }
 
+/** Reset the arena to its initial empty state.
+ * All pointers previously returned by alloc() become invalid.
+ */
 export void (Arena<T> *a) reset() {
     a->used = 0;
 }
 
+/** Reserve a contiguous range of elements from the arena.
+ * @param count Number of elements to reserve.
+ * @return Pointer to the reserved range, or null if capacity is insufficient.
+ */
 export T *(Arena<T> *a) alloc(i32 count) {
     if (count < 0 || count > a->cap - a->used) {
         return (T *)0;

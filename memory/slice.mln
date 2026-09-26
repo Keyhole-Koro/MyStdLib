@@ -1,4 +1,7 @@
-// Borrowed contiguous range over caller-owned storage.
+/** Borrowed contiguous range over caller-owned storage.
+ * @property data Pointer to the first element; ownership stays with the caller.
+ * @property len Number of elements in the range.
+ */
 //
 //     Slice<i32> s;
 //     s.init(storage, 4);
@@ -9,15 +12,26 @@ export struct Slice<T> {
     i32 len;
 };
 
+/** Initialize a borrowed range.
+ * @param data First element, or null for an empty range.
+ * @param len Number of elements accessible through the slice.
+ */
 export void (Slice<T> *s) init(T *data, i32 len) {
     s->data = data;
     s->len = len;
 }
 
+/** Return the number of elements in the range.
+ * @return Element count.
+ */
 export i32 (Slice<T> *s) len() {
     return s->len;
 }
 
+/** Find an element by zero-based index.
+ * @param index Element index.
+ * @return Pointer to the element, or null when index is out of range.
+ */
 export T *(Slice<T> *s) at(i32 index) {
     if (index < 0 || index >= s->len) {
         return (T *)0;

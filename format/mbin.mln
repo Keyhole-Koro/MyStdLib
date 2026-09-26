@@ -6,8 +6,8 @@ package mbin;
 //
 //     char *image = ...;                       // the whole file
 //     if (mbin.is_image(image, size)) {
-//         i32 off = mbin.section_offset(image, "annotations");   // -1 if none
-//         i32 len = mbin.section_size(image, "annotations");
+//         Option<i32> off = mbin.section_offset(image, "annotations");
+//         Option<i32> len = mbin.section_size(image, "annotations");
 //     }
 //
 // The header's section directory (version 2) is the linker's `__sections`
@@ -18,6 +18,7 @@ package mbin;
 // the text, which is what the kernel loader does too.
 
 import str from "../str.mln";
+import { Option } from "../option.mln";
 
 i32 MAGIC = 0x4D42494E;   // 'MBIN'
 
@@ -35,79 +36,156 @@ i32 page_up(i32 v) {
     return (v - rem) + 4096;
 }
 
-// Whether `size` bytes at `image` begin with an MBIN header.
+/** Check whether a buffer begins with an MBIN header.
+ * @param image Buffer containing the candidate executable.
+ * @param size Number of readable bytes in image.
+ * @return True when the buffer is large enough and has the MBIN magic.
+ */
 export bool is_image(char *image, i32 size) {
     if (size < 32) { return false; }
     return be32(image, 0) == MAGIC;
 }
 
+/** Read the MBIN format version.
+ * @param image MBIN image buffer.
+ * @return Header version.
+ */
 export i32 version(char *image)      { return be32(image, 4); }
+/** Read the executable entry virtual address.
+ * @param image MBIN image buffer.
+ * @return Entry virtual address.
+ */
 export i32 entry(char *image)        { return be32(image, 8); }
+/** Read the text segment file offset.
+ * @param image MBIN image buffer.
+ * @return Text segment offset within the file.
+ */
 export i32 text_offset(char *image)  { return be32(image, 12); }
+/** Read the text segment size.
+ * @param image MBIN image buffer.
+ * @return Text segment size in bytes.
+ */
 export i32 text_size(char *image)    { return be32(image, 16); }
+/** Read the data segment file offset.
+ * @param image MBIN image buffer.
+ * @return Data segment offset within the file.
+ */
 export i32 data_offset(char *image)  { return be32(image, 20); }
+/** Read the data segment size.
+ * @param image MBIN image buffer.
+ * @return Data segment size in bytes.
+ */
 export i32 data_size(char *image)    { return be32(image, 24); }
+/** Read the zero-initialized data size.
+ * @param image MBIN image buffer.
+ * @return BSS size in bytes.
+ */
 export i32 bss_size(char *image)     { return be32(image, 28); }
 
-// File offset of the section directory; 0 when the image has none (or is
-// header version 1, which has no directory).
-export i32 sections_offset(char *image) {
-    if (version(image) < 2) { return 0; }
-    return be32(image, 32);
+/** Find the section-directory file offset.
+ * @param image MBIN image buffer.
+ * @return Directory file offset, or None when no directory is present.
+ */
+export Option<i32> sections_offset(char *image) {
+    if (version(image) < 2) { return None; }
+    i32 off = be32(image, 32);
+    if (off == 0) { return None; }
+    return Some(off);
 }
 
-// Where the text segment is mapped when the image runs.
+/** Calculate the text segment's load address.
+ * @param image MBIN image buffer.
+ * @return Page-aligned text virtual address.
+ */
 export i32 text_vaddr(char *image) { return entry(image) & 0xFFFFF000; }
 
-// Where the data segment is mapped: the page after the text.
+/** Calculate the data segment's load address.
+ * @param image MBIN image buffer.
+ * @return Virtual address immediately following the page-aligned text segment.
+ */
 export i32 data_vaddr(char *image) { return text_vaddr(image) + page_up(text_size(image)); }
 
-// The file offset holding virtual address `va`, or -1 if it is outside
-// the text and data segments.
-export i32 va_to_offset(char *image, i32 va) {
+/** Translate a loaded virtual address to a file offset.
+ * @param image MBIN image buffer.
+ * @param va Virtual address to translate.
+ * @return File offset, or None when va lies outside text and data segments.
+ */
+export Option<i32> va_to_offset(char *image, i32 va) {
     i32 tv = text_vaddr(image);
     i32 ts = text_size(image);
-    if (va >= tv && va < tv + ts) { return text_offset(image) + (va - tv); }
+    if (va >= tv && va < tv + ts) { return Some(text_offset(image) + (va - tv)); }
     i32 dv = data_vaddr(image);
     i32 ds = data_size(image);
-    if (va >= dv && va < dv + ds) { return data_offset(image) + (va - dv); }
-    return -1;
+    if (va >= dv && va < dv + ds) { return Some(data_offset(image) + (va - dv)); }
+    return None;
 }
 
-// A pointer into the buffer for virtual address `va`, or 0.
-export char *va_to_ptr(char *image, i32 va) {
-    i32 off = va_to_offset(image, va);
-    if (off < 0) { return (char*)0; }
-    return &image[off];
+/** Resolve a loaded virtual address to a pointer into the image buffer.
+ * @param image MBIN image buffer.
+ * @param va Virtual address to resolve.
+ * @return Pointer into image, or None when va is outside mapped segments.
+ */
+export Option<char*> va_to_ptr(char *image, i32 va) {
+    Option<char*> result = None;
+    case va_to_offset(image, va) of {
+        Some(off) -> ({ result = Some(&image[off]); });
+        None -> _;
+    };
+    return result;
 }
 
-// Directory row of the section called `name`: its file offset, or -1.
-i32 find_row(char *image, char *name) {
-    i32 dir = sections_offset(image);
-    if (dir == 0) { return -1; }
+// Directory row of the section called `name`, or None.
+Option<i32> find_row(char *image, char *name) {
+    i32 dir = case sections_offset(image) of {
+        Some(v) -> v;
+        None -> ({ return None; });
+    };
     i32 row = dir;
     while (be32(image, row) != 0) {
-        char *n = va_to_ptr(image, be32(image, row));
-        if (n != 0) {
-            if (str.eq(n, name)) { return row; }
-        }
+        Option<char*> candidate = va_to_ptr(image, be32(image, row));
+        case candidate of {
+            Some(n) -> ({ if (str.eq(n, name)) { return Some(row); } });
+            None -> _;
+        };
         row = row + 12;
     }
-    return -1;
+    return None;
 }
 
-export bool has_section(char *image, char *name) { return find_row(image, name) >= 0; }
+/** Check whether the image contains a named section.
+ * @param image MBIN image buffer.
+ * @param name NUL-terminated section name.
+ * @return True when the section is present.
+ */
+export bool has_section(char *image, char *name) {
+    return case find_row(image, name) of {
+        Some(_) -> true;
+        None -> false;
+    };
+}
 
-// File offset of the section's first byte, or -1.
-export i32 section_offset(char *image, char *name) {
-    i32 row = find_row(image, name);
-    if (row < 0) { return -1; }
+/** Find a section's first byte in the file.
+ * @param image MBIN image buffer.
+ * @param name NUL-terminated section name.
+ * @return File offset, or None when the section is absent or unmapped.
+ */
+export Option<i32> section_offset(char *image, char *name) {
+    i32 row = case find_row(image, name) of {
+        Some(v) -> v;
+        None -> ({ return None; });
+    };
     return va_to_offset(image, be32(image, row + 4));
 }
 
-// Byte count of the section, or 0.
-export i32 section_size(char *image, char *name) {
-    i32 row = find_row(image, name);
-    if (row < 0) { return 0; }
-    return be32(image, row + 8);
+/** Read a section's byte size.
+ * @param image MBIN image buffer.
+ * @param name NUL-terminated section name.
+ * @return Section size, or None when the section is absent.
+ */
+export Option<i32> section_size(char *image, char *name) {
+    i32 row = case find_row(image, name) of {
+        Some(v) -> v;
+        None -> ({ return None; });
+    };
+    return Some(be32(image, row + 8));
 }

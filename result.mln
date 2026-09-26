@@ -1,21 +1,33 @@
-// Payload-enum result value. Build it directly with `Ok(value)` / `Err(error)`
-// and match it with `case`; result_take_ok()/result_take_err() are
-// convenience wrappers for the common "check and consume" shape.
+/** A value that contains either a successful result or an error.
+ * Construct with `Ok(value)` or `Err(error)`, and inspect with `case`.
+ * @property Ok Contains the successful value.
+ * @property Err Contains the error value.
+ */
 export enum Result<T, E> {
     Ok(T),
     Err(E),
 }
 
-export i32 result_take_ok<T, E>(Result<T, E> *result, T *out) {
+/** Copy the Ok payload to out when successful.
+ * @param result Result value to inspect.
+ * @param out Destination for the Ok payload; unchanged for Err.
+ * @return True for Ok, false for Err.
+ */
+export bool result_take_ok<T, E>(Result<T, E> *result, T *out) {
     return case *result of {
-        Ok(v)  -> ({ *out = v; 1; });
-        Err(e) -> 0;
+        Ok(v)  -> ({ *out = v; true; });
+        Err(e) -> false;
     };
 }
 
-export i32 result_take_err<T, E>(Result<T, E> *result, E *out) {
+/** Copy the Err payload to out when the result is an error.
+ * @param result Result value to inspect.
+ * @param out Destination for the Err payload; unchanged for Ok.
+ * @return True for Err, false for Ok.
+ */
+export bool result_take_err<T, E>(Result<T, E> *result, E *out) {
     return case *result of {
-        Ok(v)  -> 0;
-        Err(e) -> ({ *out = e; 1; });
+        Ok(v)  -> false;
+        Err(e) -> ({ *out = e; true; });
     };
 }

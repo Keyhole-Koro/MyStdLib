@@ -12,15 +12,21 @@ import { Option } from "option.mln";
 // Reads mask with 0xFF because `char` sign-extends when widened to i32, which
 // would make any byte >= 0x80 compare as negative.
 
-// Number of bytes before the terminator.
+/** Measure a NUL-terminated string.
+ * @param s String to measure.
+ * @return Number of bytes before the terminator.
+ */
 export i32 len(char* s) {
     i32 n = 0;
     for (; s[n] != 0; n++) {}
     return n;
 }
 
-// Lexicographic comparison by unsigned byte value.
-// Returns <0 if a sorts before b, 0 if equal, >0 otherwise.
+/** Compare strings lexicographically using unsigned byte values.
+ * @param a First string.
+ * @param b Second string.
+ * @return Negative, zero, or positive when a is less than, equal to, or greater than b.
+ */
 export i32 cmp(char* a, char* b) {
     i32 i = 0;
     while (1) {
@@ -36,12 +42,21 @@ export i32 cmp(char* a, char* b) {
     }
 }
 
-// Non-zero when both strings hold the same bytes.
+/** Check whether two strings contain the same bytes.
+ * @param a First string.
+ * @param b Second string.
+ * @return True when the strings are equal.
+ */
 export bool eq(char* a, char* b) {
     return cmp(a, b) == 0;
 }
 
-// Compare at most n bytes. Returns 0 when the first n bytes match.
+/** Compare at most n bytes using unsigned byte values.
+ * @param a First string.
+ * @param b Second string.
+ * @param n Maximum number of bytes to compare.
+ * @return Negative, zero, or positive according to lexicographic order.
+ */
 export i32 ncmp(char* a, char* b, i32 n) {
     i32 i = 0;
     while (i < n) {
@@ -58,7 +73,11 @@ export i32 ncmp(char* a, char* b, i32 n) {
     return 0;
 }
 
-// True when s begins with prefix.
+/** Check whether s begins with prefix.
+ * @param s String to inspect.
+ * @param prefix Prefix to match.
+ * @return True when s starts with prefix.
+ */
 export bool starts_with(char* s, char* prefix) {
     i32 i = 0;
     while (prefix[i] != 0) {
@@ -72,8 +91,11 @@ export bool starts_with(char* s, char* prefix) {
     return true;
 }
 
-// Copy src (including the terminator) into dst. Returns the length copied.
-// The caller guarantees dst holds len(src) + 1 bytes.
+/** Copy a NUL-terminated string, including its terminator.
+ * @param dst Destination with room for len(src) + 1 bytes.
+ * @param src Source string.
+ * @return Number of non-terminator bytes copied.
+ */
 export i32 copy(char* dst, char* src) {
     i32 i = 0;
     while (src[i] != 0) {
@@ -84,8 +106,12 @@ export i32 copy(char* dst, char* src) {
     return i;
 }
 
-// Copy at most cap-1 bytes and always terminate. Returns the length written,
-// so a truncated copy is visible as a return value smaller than len(src).
+/** Copy a string into a bounded destination and always terminate when cap is positive.
+ * @param dst Destination buffer.
+ * @param src Source string.
+ * @param cap Destination capacity including the terminator.
+ * @return Number of non-terminator bytes written; compare with len(src) to detect truncation.
+ */
 export i32 ncopy(char* dst, char* src, i32 cap) {
     if (cap <= 0) {
         return 0;
@@ -102,8 +128,11 @@ export i32 ncopy(char* dst, char* src, i32 cap) {
     return i;
 }
 
-// Append src to dst. Returns the resulting total length.
-// The caller guarantees dst holds len(dst) + len(src) + 1 bytes.
+/** Append src to dst, including a final terminator.
+ * @param dst Destination with room for both strings and the terminator.
+ * @param src String to append.
+ * @return Resulting string length, excluding the terminator.
+ */
 export i32 cat(char* dst, char* src) {
     i32 n = len(dst);
     i32 i = 0;
@@ -115,7 +144,11 @@ export i32 cat(char* dst, char* src) {
     return n + i;
 }
 
-// Index of the first occurrence of byte c.
+/** Find the first occurrence of a byte in a string.
+ * @param s NUL-terminated string to search.
+ * @param c Byte value to find; only its low 8 bits are used.
+ * @return Byte index, or None when absent. Searching for zero returns the terminator index.
+ */
 export Option<i32> chr(char* s, i32 c) {
     i32 i = 0;
     i32 want = c & 0xFF;
@@ -131,15 +164,18 @@ export Option<i32> chr(char* s, i32 c) {
     return None;
 }
 
-// Index of the first occurrence of needle in haystack, or -1.
-// An empty needle matches at 0.
+/** Find a substring.
+ * @param haystack String to search.
+ * @param needle Substring to find; an empty needle matches at index zero.
+ * @return First matching byte index, or None when absent.
+ */
 export Option<i32> find(char* haystack, char* needle) {
     if (needle[0] == 0) {
         return Some(0);
     }
     i32 i = 0;
     while (haystack[i] != 0) {
-        if (starts_with(&haystack[i], needle) != 0) {
+        if (starts_with(&haystack[i], needle)) {
             return Some(i);
         }
         i++;
@@ -147,8 +183,11 @@ export Option<i32> find(char* haystack, char* needle) {
     return None;
 }
 
-// Convert a 32-bit integer to a NUL-terminated string in base 10.
-// Returns the number of characters written, excluding the NUL terminator.
+/** Convert a signed integer to a NUL-terminated decimal string.
+ * @param value Integer to convert.
+ * @param buf Destination with room for the result and terminator.
+ * @return Number of characters written, excluding the terminator.
+ */
 export i32 itoa(i32 value, char* buf) {
     if (value == 0) {
         buf[0] = 48; // '0'
@@ -171,7 +210,7 @@ export i32 itoa(i32 value, char* buf) {
     }
 
     i32 total_chars = num_digits;
-    if (is_negative != 0) {
+    if (is_negative) {
         total_chars++;
     }
 
@@ -187,15 +226,18 @@ export i32 itoa(i32 value, char* buf) {
         i--;
     }
 
-    if (is_negative != 0) {
+    if (is_negative) {
         buf[0] = 45; // '-'
     }
 
     return total_chars;
 }
 
-// Convert value to base 16 without a prefix, using lowercase digits.
-// Returns the number of characters written, excluding the terminator.
+/** Convert an integer to lowercase hexadecimal without a prefix.
+ * @param value Integer interpreted as a 32-bit value.
+ * @param buf Destination with room for the result and terminator.
+ * @return Number of characters written, excluding the terminator.
+ */
 export i32 xtoa(i32 value, char* buf) {
     if (value == 0) {
         buf[0] = 48; // '0'
@@ -207,7 +249,7 @@ export i32 xtoa(i32 value, char* buf) {
     // free of the multiply and divide the target has no instruction for.
     i32 shift = 28;
     while (shift > 0) {
-        if (((value >> shift) & 15) != 0) {
+        if ((value >> shift) & 15) {
             break;
         }
         shift = shift - 4;
@@ -228,8 +270,11 @@ export i32 xtoa(i32 value, char* buf) {
     return n;
 }
 
-// Parse a leading optional sign followed by base-10 digits.
-// Stops at the first byte that is not a digit; returns 0 when none are found.
+/** Parse a signed decimal prefix from a string.
+ * Parsing stops at the first non-digit byte.
+ * @param s String to parse; an optional leading plus or minus is accepted.
+ * @return Parsed integer, or zero when no decimal digits follow the optional sign.
+ */
 export i32 atoi(char* s) {
     i32 i = 0;
     i32 sign = 1;

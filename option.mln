@@ -1,14 +1,21 @@
-// Payload-enum option value. Build it directly with `Some(value)` / `None`
-// and match it with `case`; option_take() is a convenience for the common
-// "check and consume" shape.
+/** An optional value represented by a payload enum.
+ * Construct with `Some(value)` or `None`, and inspect with `case`.
+ * @property Some Contains the present value.
+ * @property None Represents the absence of a value.
+ */
 export enum Option<T> {
     Some(T),
     None,
 }
 
-export i32 option_take<T>(Option<T> *option, T *out) {
+/** Copy the Some payload to out when present.
+ * @param option Option value to inspect.
+ * @param out Destination for the Some payload; unchanged for None.
+ * @return True for Some, false for None.
+ */
+export bool option_take<T>(Option<T> *option, T *out) {
     return case *option of {
-        Some(v) -> ({ *out = v; 1; });
-        None    -> 0;
+        Some(v) -> ({ *out = v; true; });
+        None    -> false;
     };
 }

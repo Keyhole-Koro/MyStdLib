@@ -9,56 +9,96 @@ import { Result } from "result.mln";
 extern void assert_fail(char* message);
 
 
+/** Assert that condition is true.
+ * @param condition Condition to check.
+ * @param message Message passed to assert_fail when the assertion fails.
+ */
 export void assert_true(bool condition, char* message) {
-    if (condition == 0) {
+    if (!condition) {
         assert_fail(message);
     }
 }
 
+/** Assert that condition is false.
+ * @param condition Condition to check.
+ * @param message Message passed to assert_fail when the assertion fails.
+ */
 export void assert_false(bool condition, char* message) {
-    if (condition != 0) {
+    if (condition) {
         assert_fail(message);
     }
 }
 
-// Equality is generic, but only types supported by MyLang's == operator may
-// instantiate it: integer-like scalars, ordinary enums, and pointers.
+/** Assert that actual equals expected.
+ * Only types supported by MyLang's equality operator can be used.
+ * @param actual Value produced by the code under test.
+ * @param expected Value expected by the test.
+ * @param message Message passed to assert_fail when values differ.
+ */
 export void assert_eq<T>(T actual, T expected, char* message) {
     if (actual != expected) {
         assert_fail(message);
     }
 }
 
+/** Assert that actual differs from expected.
+ * @param actual Value produced by the code under test.
+ * @param expected Value expected not to match.
+ * @param message Message passed to assert_fail when values are equal.
+ */
 export void assert_ne<T>(T actual, T expected, char* message) {
     if (actual == expected) {
         assert_fail(message);
     }
 }
 
+/** Assert that value is null.
+ * @param value Pointer to check.
+ * @param message Message passed to assert_fail when value is non-null.
+ */
 export void assert_null<T>(T* value, char* message) {
     if (value != 0) {
         assert_fail(message);
     }
 }
 
+/** Assert that value is not null.
+ * @param value Pointer to check.
+ * @param message Message passed to assert_fail when value is null.
+ */
 export void assert_not_null<T>(T* value, char* message) {
     if (value == 0) {
         assert_fail(message);
     }
 }
 
+/** Assert equality of two NUL-terminated strings.
+ * @param actual Actual string.
+ * @param expected Expected string.
+ * @param message Message passed to assert_fail when strings differ.
+ */
 export void assert_str_eq(char* actual, char* expected, char* message) {
-    if (str.eq(actual, expected) == 0) {
+    if (!str.eq(actual, expected)) {
         assert_fail(message);
     }
 }
 
+/** Assert equality of two byte ranges.
+ * @param actual First byte range.
+ * @param expected Second byte range.
+ * @param len Number of bytes to compare.
+ * @param message Message passed to assert_fail when ranges differ.
+ */
 export void assert_bytes_eq(char* actual, char* expected, i32 len, char* message) {
-    if (bytes.eq(actual, expected, len) == 0) {
+    if (!bytes.eq(actual, expected, len)) {
         assert_fail(message);
     }
 }
 
+/** Assert that result contains Ok without modifying it.
+ * @param result Result value to inspect.
+ * @param message Message passed to assert_fail when result is Err.
+ */
 export void assert_result_ok<T, E>(Result<T, E>* result, char* message) {
     case *result of {
         Ok(value) -> 0;
@@ -66,6 +106,10 @@ export void assert_result_ok<T, E>(Result<T, E>* result, char* message) {
     };
 }
 
+/** Assert that result contains Err without modifying it.
+ * @param result Result value to inspect.
+ * @param message Message passed to assert_fail when result is Ok.
+ */
 export void assert_result_err<T, E>(Result<T, E>* result, char* message) {
     case *result of {
         Ok(value) -> assert_fail(message);

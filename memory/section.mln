@@ -16,48 +16,75 @@ package section;
 // The compiler's own use is the annotation metadata table (meta/annotations.mln).
 
 import { Slice } from "slice.mln";
+import { Option } from "../option.mln";
 import str from "../str.mln";
 
 extern i32 __sections[];
 
-// Directory row of `name`, or -1.
-i32 find(char *name) {
+// Directory row of `name`, or None.
+Option<i32> find(char *name) {
     i32 i = 0;
     while (__sections[i * 3] != 0) {
-        if (str.eq((char*)__sections[i * 3], name)) { return i; }
+        if (str.eq((char*)__sections[i * 3], name)) { return Some(i); }
         i++;
     }
-    return -1;
+    return None;
 }
 
-// Whether any object contributed a section of this name.
+/** Check whether the linker collected a named section.
+ * @param name NUL-terminated section name.
+ * @return True when at least one object contributed the section.
+ */
 export bool exists(char *name) {
-    return find(name) >= 0;
+    return case find(name) of {
+        Some(_) -> true;
+        None -> false;
+    };
 }
 
-// Address of the section's first byte, or 0.
-export i32 start(char *name) {
-    i32 i = find(name);
-    if (i < 0) { return 0; }
-    return __sections[i * 3 + 1];
+/** Get the address of a collected section.
+ * @param name NUL-terminated section name.
+ * @return Address of the first byte, or None when the section is absent.
+ */
+export Option<i32> start(char *name) {
+    i32 i = case find(name) of {
+        Some(v) -> v;
+        None -> ({ return None; });
+    };
+    return Some(__sections[i * 3 + 1]);
 }
 
-// Byte count of the section (all objects' blocks together), or 0.
-export i32 size(char *name) {
-    i32 i = find(name);
-    if (i < 0) { return 0; }
-    return __sections[i * 3 + 2];
+/** Get the total byte size of a collected section.
+ * @param name NUL-terminated section name.
+ * @return Combined size in bytes, or None when the section is absent.
+ */
+export Option<i32> size(char *name) {
+    i32 i = case find(name) of {
+        Some(v) -> v;
+        None -> ({ return None; });
+    };
+    return Some(__sections[i * 3 + 2]);
 }
 
-// The section as a slice of T: `size / sizeof(T)` elements starting at
-// `start`. An absent section is an empty slice. (A generic is instantiated
-// in the importing module, so this body only uses this package's exported
-// entry points.)
+/** View a collected section as a slice of T.
+ * The element count is the section byte size divided by sizeof(T).
+ * @param name NUL-terminated section name.
+ * @return Slice over the section, or an empty slice when it is absent.
+ */
 export Slice<T> as_slice<T>(char *name) {
     Slice<T> s;
-    T *data = (T*)start(name);
+    T *data = (T*)0;
     i32 len = 0;
-    if (data != 0) { len = size(name) / sizeof(T); }
+    case start(name) of {
+        Some(address) -> ({
+            data = (T*)address;
+            case size(name) of {
+                Some(bytes) -> ({ len = bytes / sizeof(T); });
+                None -> _;
+            };
+        });
+        None -> _;
+    };
     s.init(data, len);
     return s;
 }

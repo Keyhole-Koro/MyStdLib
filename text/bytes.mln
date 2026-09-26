@@ -11,7 +11,12 @@ import { Option } from "../option.mln";
 // Every count is in bytes and every buffer is caller-owned; nothing here
 // allocates. Reads mask with 0xFF because `char` sign-extends into i32.
 
-// Fill n bytes of dst with value. Returns dst's length in bytes for chaining.
+/** Fill dst with the low byte of value.
+ * @param dst Destination buffer of at least n bytes.
+ * @param value Integer whose low byte is repeated.
+ * @param n Number of bytes to write.
+ * @return Number of bytes written.
+ */
 export i32 set(char* dst, i32 value, i32 n) {
     i32 v = value & 0xFF;
     i32 i = 0;
@@ -22,12 +27,21 @@ export i32 set(char* dst, i32 value, i32 n) {
     return n;
 }
 
-// Fill n bytes of dst with 0.
+/** Fill dst with zero bytes.
+ * @param dst Destination buffer of at least n bytes.
+ * @param n Number of bytes to clear.
+ * @return Number of bytes written.
+ */
 export i32 zero(char* dst, i32 n) {
     return set(dst, 0, n);
 }
 
-// Copy n bytes forwards. The buffers must not overlap; use move() when they can.
+/** Copy n bytes from src to dst; the ranges must not overlap.
+ * @param dst Destination buffer of at least n bytes.
+ * @param src Source buffer of at least n readable bytes.
+ * @param n Number of bytes to copy.
+ * @return Number of bytes copied.
+ */
 export i32 copy(char* dst, char* src, i32 n) {
     i32 i = 0;
     while (i < n) {
@@ -37,9 +51,12 @@ export i32 copy(char* dst, char* src, i32 n) {
     return n;
 }
 
-// Copy n bytes, correct even when dst and src overlap. Copies backwards when
-// dst sits inside src, which is the only direction that cannot clobber a byte
-// before it has been read.
+/** Copy n bytes from src to dst, including when the ranges overlap.
+ * @param dst Destination buffer.
+ * @param src Source buffer.
+ * @param n Number of bytes to copy.
+ * @return Number of bytes copied.
+ */
 export i32 move(char* dst, char* src, i32 n) {
     if (dst == src || n <= 0) {
         return n;
@@ -57,8 +74,12 @@ export i32 move(char* dst, char* src, i32 n) {
     return n;
 }
 
-// Compare n bytes by unsigned value.
-// Returns <0 if a sorts before b, 0 if the ranges are equal, >0 otherwise.
+/** Compare two byte ranges using unsigned byte values.
+ * @param a First range of n bytes.
+ * @param b Second range of n bytes.
+ * @param n Number of bytes to compare.
+ * @return Negative, zero, or positive when a is less than, equal to, or greater than b.
+ */
 export i32 cmp(char* a, char* b, i32 n) {
     i32 i = 0;
     while (i < n) {
@@ -72,7 +93,12 @@ export i32 cmp(char* a, char* b, i32 n) {
     return 0;
 }
 
-// True when the first n bytes of a and b are equal.
+/** Check whether two byte ranges are equal.
+ * @param a First range of n bytes.
+ * @param b Second range of n bytes.
+ * @param n Number of bytes to compare.
+ * @return True when all n bytes match.
+ */
 export bool eq(char* a, char* b, i32 n) {
     if (cmp(a, b, n) == 0) {
         return true;
@@ -80,7 +106,12 @@ export bool eq(char* a, char* b, i32 n) {
     return false;
 }
 
-// Index of the first byte equal to value within the first n bytes, or -1.
+/** Find the first occurrence of a byte value in a buffer.
+ * @param buf Buffer to search.
+ * @param n Number of bytes to inspect.
+ * @param value Byte value to find; only its low 8 bits are used.
+ * @return Index of the first match, or None if absent.
+ */
 export Option<i32> find(char* buf, i32 n, i32 value) {
     i32 want = value & 0xFF;
     i32 i = 0;
