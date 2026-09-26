@@ -1,4 +1,8 @@
-// Fixed-capacity vector over caller-owned storage.
+/** Fixed-capacity vector over caller-owned storage.
+ * @property data Pointer to caller-owned element storage.
+ * @property len Number of initialized elements.
+ * @property cap Number of available storage slots.
+ */
 //
 //     Vec<i32> v;
 //     v.init(storage, 8);
@@ -10,16 +14,27 @@ export struct Vec<T> {
     i32 cap;
 };
 
+/** Initialize an empty vector over caller-owned storage.
+ * @param storage Storage for at least cap elements.
+ * @param cap Number of available elements in storage.
+ */
 export void (Vec<T> *v) init(T *storage, i32 cap) {
     v->data = storage;
     v->len = 0;
     v->cap = cap;
 }
 
+/** Return the number of elements currently stored.
+ * @return Current element count.
+ */
 export i32 (Vec<T> *v) len() {
     return v->len;
 }
 
+/** Append value to the end of the vector.
+ * @param value Element to append.
+ * @return True if appended, false if the vector is full.
+ */
 export bool (Vec<T> *v) push(T value) {
     if (v->len >= v->cap) {
         return false;
@@ -30,6 +45,10 @@ export bool (Vec<T> *v) push(T value) {
     return true;
 }
 
+/** Remove the last element and copy it to out.
+ * @param out Destination for the removed element; unchanged when empty.
+ * @return True if an element was removed, false if empty.
+ */
 export bool (Vec<T> *v) pop(T *out) {
     if (v->len == 0) {
         return false;
@@ -40,6 +59,10 @@ export bool (Vec<T> *v) pop(T *out) {
     return true;
 }
 
+/** Find an element by zero-based index.
+ * @param index Element index.
+ * @return Pointer to the element, or null when index is out of range.
+ */
 export T *(Vec<T> *v) at(i32 index) {
     if (index < 0 || index >= v->len) {
         return (T *)0;

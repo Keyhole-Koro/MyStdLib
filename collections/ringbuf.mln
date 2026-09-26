@@ -1,5 +1,10 @@
-// Fixed-capacity FIFO over caller-owned storage. One slot remains empty to
-// distinguish full from empty, so usable capacity is `cap - 1`.
+/** Fixed-capacity FIFO over caller-owned storage.
+ * One slot remains empty to distinguish full from empty; usable capacity is cap - 1.
+ * @property data Pointer to caller-owned element storage.
+ * @property cap Number of storage slots, including the reserved empty slot.
+ * @property head Index of the oldest queued element.
+ * @property tail Index where the next element will be written.
+ */
 //
 //     RingBuffer<char> r;
 //     r.init(storage, 64);
@@ -13,6 +18,10 @@ export struct RingBuffer<T> {
     i32 tail;
 };
 
+/** Initialize an empty queue over caller-owned storage.
+ * @param storage Storage for cap elements.
+ * @param cap Number of storage slots; usable capacity is cap - 1.
+ */
 export void (RingBuffer<T> *r) init(T *storage, i32 cap) {
     r->data = storage;
     r->cap = cap;
@@ -20,10 +29,16 @@ export void (RingBuffer<T> *r) init(T *storage, i32 cap) {
     r->tail = 0;
 }
 
+/** Return the maximum number of queued elements.
+ * @return Storage slot count minus one.
+ */
 export i32 (RingBuffer<T> *r) capacity() {
     return r->cap - 1;
 }
 
+/** Return the number of queued elements.
+ * @return Current queue length.
+ */
 export i32 (RingBuffer<T> *r) count() {
     if (r->tail >= r->head) {
         return r->tail - r->head;
@@ -31,6 +46,9 @@ export i32 (RingBuffer<T> *r) count() {
     return r->cap - r->head + r->tail;
 }
 
+/** Check whether the queue contains an element.
+ * @return True when non-empty.
+ */
 export bool (RingBuffer<T> *r) has() {
     if (r->head == r->tail) {
         return false;
@@ -38,6 +56,9 @@ export bool (RingBuffer<T> *r) has() {
     return true;
 }
 
+/** Check whether the queue is full.
+ * @return True when another element cannot be queued.
+ */
 export bool (RingBuffer<T> *r) full() {
     i32 next = r->tail + 1;
     if (next >= r->cap) {
@@ -49,6 +70,10 @@ export bool (RingBuffer<T> *r) full() {
     return false;
 }
 
+/** Append a value to the queue.
+ * @param value Element to queue.
+ * @return True if queued, false if the queue is full.
+ */
 export bool (RingBuffer<T> *r) push(T value) {
     i32 next = r->tail + 1;
     if (next >= r->cap) {
@@ -63,6 +88,10 @@ export bool (RingBuffer<T> *r) push(T value) {
     return true;
 }
 
+/** Remove the oldest value from the queue.
+ * @param out Destination for the removed value; unchanged when empty.
+ * @return True if a value was removed, false if empty.
+ */
 export bool (RingBuffer<T> *r) pop(T *out) {
     if (r->head == r->tail) {
         return false;
@@ -76,7 +105,10 @@ export bool (RingBuffer<T> *r) pop(T *out) {
     return true;
 }
 
-// Read the oldest value without removing it. Leaves *out untouched when empty.
+/** Copy the oldest value without removing it.
+ * @param out Destination for the value; unchanged when empty.
+ * @return True if a value was read, false if empty.
+ */
 export bool (RingBuffer<T> *r) peek(T *out) {
     if (r->head == r->tail) {
         return false;
@@ -87,6 +119,8 @@ export bool (RingBuffer<T> *r) peek(T *out) {
 }
 
 // Discard every queued value.
+/** Discard all queued values.
+ */
 export void (RingBuffer<T> *r) clear() {
     r->head = 0;
     r->tail = 0;

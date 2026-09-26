@@ -1,5 +1,7 @@
-// A singly linked intrusive list. The payload type owns its next link; callers
-// pass the address of that field (for example, `&node->next`).
+/** A singly linked intrusive list whose payload type owns its next link.
+ * @property head First node, or null when the list is empty.
+ * @property len Number of nodes in the list.
+ */
 //
 //     IntrusiveList<Node> l;
 //     l.init();
@@ -10,17 +12,27 @@ export struct IntrusiveList<T> {
     i32 len;
 };
 
+/** Initialize an empty list.
+ */
 export void (IntrusiveList<T> *list) init() {
     list->head = (T *)0;
     list->len = 0;
 }
 
+/** Insert node at the front of the list.
+ * @param node Node to insert.
+ * @param node_next Address of node's next-link field.
+ */
 export void (IntrusiveList<T> *list) push_front(T *node, T **node_next) {
     *node_next = list->head;
     list->head = node;
     list->len = list->len + 1;
 }
 
+/** Remove and return the first node.
+ * @param head_next Address of the current head node's next-link field.
+ * @return Removed node, or null when the list is empty.
+ */
 export T *(IntrusiveList<T> *list) pop_front(T **head_next) {
     T *node = list->head;
     if (node == 0) {

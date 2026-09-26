@@ -1,5 +1,10 @@
-// Fixed-capacity string-keyed map. Keys are borrowed NUL-terminated strings;
-// capacity must be a power of two. Deletion and automatic growth are omitted.
+/** Fixed-capacity string-keyed map using borrowed NUL-terminated keys.
+ * Capacity must be a power of two. Deletion and automatic growth are omitted.
+ * @property keys Caller-owned array of key addresses; zero marks an empty slot.
+ * @property values Caller-owned array of values corresponding to keys.
+ * @property cap Map capacity, or zero if initialized with an invalid capacity.
+ * @property len Number of distinct keys currently stored.
+ */
 //
 //     HashMap<i32> m;
 //     m.init(keys, values, 8);
@@ -13,11 +18,16 @@ export struct HashMap<T> {
     i32 len;
 };
 
+/** Initialize the map using caller-owned arrays.
+ * @param keys Array of at least cap key slots.
+ * @param values Array of at least cap value slots.
+ * @param cap Positive power-of-two capacity; other values disable the map.
+ */
 export void (HashMap<T> *map) init(i32 *keys, T *values, i32 cap) {
     map->keys = keys;
     map->values = values;
     map->len = 0;
-    if (cap <= 0 || (cap & (cap - 1)) != 0) {
+    if (cap <= 0 || (cap & (cap - 1))) {
         map->cap = 0;
         return;
     }
@@ -29,6 +39,11 @@ export void (HashMap<T> *map) init(i32 *keys, T *values, i32 cap) {
     }
 }
 
+/** Insert a key/value pair or replace the value for an existing key.
+ * @param key Borrowed NUL-terminated key, which must remain valid while stored.
+ * @param value Value to insert or assign.
+ * @return True on insertion or replacement, false if disabled or full.
+ */
 export bool (HashMap<T> *map) put(char *key, T value) {
     if (map->cap <= 0) {
         return false;
@@ -73,6 +88,11 @@ export bool (HashMap<T> *map) put(char *key, T value) {
     return false;
 }
 
+/** Look up a key and copy its value to out.
+ * @param key NUL-terminated key to find.
+ * @param out Destination for the value; unchanged when lookup fails.
+ * @return True if found, false if absent or the map is disabled.
+ */
 export bool (HashMap<T> *map) get(char *key, T *out) {
     if (map->cap <= 0) {
         return false;
