@@ -78,7 +78,7 @@ export void assert_not_null<T>(T* value, char* message) {
  * @param message Message passed to assert_fail when strings differ.
  */
 export void assert_str_eq(char* actual, char* expected, char* message) {
-    if (!str.eq(actual, expected)) {
+    if (actual.as_str() != expected.as_str()) {
         assert_fail(message);
     }
 }

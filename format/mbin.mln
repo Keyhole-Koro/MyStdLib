@@ -144,7 +144,7 @@ Option<i32> find_row(char *image, char *name) {
     while (be32(image, row) != 0) {
         Option<char*> candidate = va_to_ptr(image, be32(image, row));
         case candidate of {
-            Some(n) -> ({ if (str.eq(n, name)) { return Some(row); } });
+            Some(n) -> ({ if (n.as_str() == name.as_str()) { return Some(row); } });
             None -> _;
         };
         row = row + 12;

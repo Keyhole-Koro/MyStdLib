@@ -25,7 +25,8 @@ extern i32 __sections[];
 Option<i32> find(char *name) {
     i32 i = 0;
     while (__sections[i * 3] != 0) {
-        if (str.eq((char*)__sections[i * 3], name)) { return Some(i); }
+        char *section_name = (char*)__sections[i * 3];
+        if (section_name.as_str() == name.as_str()) { return Some(i); }
         i++;
     }
     return None;

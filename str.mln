@@ -2,12 +2,131 @@ package str;
 
 import { Option } from "option.mln";
 
-// NUL-terminated byte string helpers.
-//
-// A "string" here is a `char*` pointing at bytes terminated by 0, the only
-// string representation MyLang has today: a literal is interned into the data
-// section by the compiler and its address loaded with `movi`. There is no
-// length word, so every call that needs one walks the bytes.
+// `str` is MyLang's borrowed, length-aware string view. Its layout is owned
+// by the language (`char* data`, `i32 length`); this module supplies the
+// algorithms and the bridge to legacy NUL-terminated APIs.
+
+/** Build a string view by measuring a legacy NUL-terminated string.
+ * @param data NUL-terminated byte string.
+ * @return Borrowed view over data, excluding the terminator.
+ */
+export str from_c(char* data) {
+    return str { data: data, length: len(data) };
+}
+
+/** Convert a legacy NUL-terminated pointer to a length-aware view.
+ * @return Borrowed view over self.
+ */
+export str (char* self) as_str() {
+    return from_c(self);
+}
+
+/** Return the number of bytes in this string view.
+ * @return Byte length; this does not scan for a terminator.
+ */
+export i32 (str self) len() {
+    return self.length;
+}
+
+/** Test whether this view contains no bytes.
+ * @return True when len() is zero.
+ */
+export bool (str self) is_empty() {
+    return self.length == 0;
+}
+
+/** Access the underlying pointer for a legacy C-style API.
+ * @return Pointer to the first byte. A sliced view is not guaranteed to end
+ * at its logical length, so callers must not assume a terminator there.
+ */
+export char* (str self) as_c_str() {
+    return self.data;
+}
+
+/** Compare two views lexicographically using unsigned byte values.
+ * @param other View to compare with self.
+ * @return Negative, zero, or positive according to byte order.
+ */
+export i32 (str self) compare(str other) {
+    i32 n = self.length;
+    if (other.length < n) { n = other.length; }
+    i32 i = 0;
+    while (i < n) {
+        i32 a = (i32)self.data[i] & 0xFF;
+        i32 b = (i32)other.data[i] & 0xFF;
+        if (a != b) { return a - b; }
+        i++;
+    }
+    return self.length - other.length;
+}
+
+/** Test whether self begins with prefix.
+ * @param prefix Prefix to match.
+ * @return True when every prefix byte matches.
+ */
+export bool (str self) starts_with(str prefix) {
+    if (prefix.length > self.length) { return false; }
+    i32 i = 0;
+    while (i < prefix.length) {
+        if (self.data[i] != prefix.data[i]) { return false; }
+        i++;
+    }
+    return true;
+}
+
+/** Test whether self ends with suffix.
+ * @param suffix Suffix to match.
+ * @return True when every suffix byte matches.
+ */
+export bool (str self) ends_with(str suffix) {
+    if (suffix.length > self.length) { return false; }
+    i32 start = self.length - suffix.length;
+    i32 i = 0;
+    while (i < suffix.length) {
+        if (self.data[start + i] != suffix.data[i]) { return false; }
+        i++;
+    }
+    return true;
+}
+
+/** Find the first occurrence of needle in self.
+ * @param needle Substring to find; an empty view matches at zero.
+ * @return First byte index, or None when absent.
+ */
+export Option<i32> (str self) find(str needle) {
+    if (needle.length == 0) { return Some(0); }
+    if (needle.length > self.length) { return None; }
+    i32 at = 0;
+    while (at <= self.length - needle.length) {
+        i32 i = 0;
+        while (i < needle.length && self.data[at + i] == needle.data[i]) { i++; }
+        if (i == needle.length) { return Some(at); }
+        at++;
+    }
+    return None;
+}
+
+/** Borrow an end-exclusive subrange.
+ * @param start First byte index.
+ * @param end End-exclusive byte index.
+ * @return The requested view, or None for an invalid range.
+ */
+export Option<str> (str self) slice(i32 start, i32 end) {
+    if (start < 0 || end < start || end > self.length) { return None; }
+    return Some(str { data: self.data + start, length: end - start });
+}
+
+/** Read one byte without unchecked indexing.
+ * @param index Byte index.
+ * @return The byte, or None when index is outside the view.
+ */
+export Option<u8> (str self) byte_at(i32 index) {
+    if (index < 0 || index >= self.length) { return None; }
+    return Some((u8)self.data[index]);
+}
+
+// Legacy NUL-terminated byte string helpers. The language-level `str` view is
+// defined above; these functions remain for FFI/MMIO buffers and old callers.
 //
 // Reads mask with 0xFF because `char` sign-extends when widened to i32, which
 // would make any byte >= 0x80 compare as negative.

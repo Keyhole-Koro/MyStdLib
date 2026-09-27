@@ -35,7 +35,23 @@ import tests. See [GENERICS.md](GENERICS.md) for the generic container API.
 
 Every module is imported by explicit relative path (there is no implicit
 prelude): `import { Vec } from "vec.mln";` -- a type's exported methods
-(`v.push(x)`, `s.len()`) travel with it.
+(`v.push(x)`, `s.len()`) travel with it. `str.mln` supplies the compiler-known
+borrowed `str` view (`{ char* data; i32 length; }`) and its bridge to legacy
+`char*` buffers:
+
+```mln
+import str from "str.mln";
+
+str name = "MyOS";
+if (name.starts_with("My")) {
+    char* c_name = name.as_c_str();
+}
+```
+
+String literals retain a trailing NUL for compatibility, but `str.len()` uses
+the stored byte length and therefore also handles embedded NULs. Use
+`as_c_str()` explicitly for an arbitrary view; only literals retain the old
+implicit conversion to `char*`/`char[]`.
 
 `assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it
