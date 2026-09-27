@@ -314,42 +314,49 @@ export i32 itoa(i32 value, char* buf) {
         return 1;
     }
 
-    i32 is_negative = 0;
-    if (value < 0) {
-        is_negative = 1;
-        value = 0 - value;
+    // Negating the minimum signed value cannot be represented as i32.
+    if (value == -2147483647 - 1) {
+        char minimum[12] = "-2147483648";
+        i32 i = 0;
+        while (i < 12) { buf[i] = minimum[i]; i++; }
+        return 11;
     }
 
-    // Count digits
-    i32 temp = value;
-    i32 num_digits = 0;
-    while (temp > 0) {
-        num_digits++;
-        temp = temp / 10;
+    bool is_negative = value < 0;
+    if (is_negative) { value = 0 - value; }
+    i32 remaining = value;
+    i32 length = 0;
+    while (remaining != 0) {
+        i32 digit = remaining % 10;
+        buf[length] = 48 + digit; // '0' + digit, temporarily reversed
+        length++;
+        remaining = remaining / 10;
     }
-
-    i32 total_chars = num_digits;
     if (is_negative) {
-        total_chars++;
+        buf[length] = 45; // '-'
+        length++;
     }
 
-    buf[total_chars] = 0;
-
-    temp = value;
-    i32 i = total_chars - 1;
-
-    while (temp > 0) {
-        i32 d = temp % 10;
-        buf[i] = 48 + d; // '0' + d
-        temp = temp / 10;
-        i--;
+    i32 left = 0;
+    i32 right = length - 1;
+    while (left < right) {
+        char tmp = buf[left];
+        buf[left] = buf[right];
+        buf[right] = tmp;
+        left++;
+        right--;
     }
+    buf[length] = 0;
+    return length;
+}
 
-    if (is_negative) {
-        buf[0] = 45; // '-'
-    }
-
-    return total_chars;
+/** Convert an integer into a borrowed decimal string view.
+ * @param buffer Caller-owned storage with room for 12 bytes.
+ * @return View over the written decimal representation.
+ */
+export str (i32 self) to_str(char *buffer) {
+    i32 length = itoa(self, buffer);
+    return str { data: buffer, length: length };
 }
 
 /** Convert an integer to lowercase hexadecimal without a prefix.

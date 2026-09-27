@@ -3,7 +3,7 @@
 Shared MyLang standard library: generic containers (`Vec`, `Slice`, `Arena`,
 `RingBuffer`, `IntrusiveList`, `HashMap`, `Option`, `Result`) plus string,
 byte, bit-array, and assertion helpers (`str`, `bytes`, `bitset`, `strbuf`,
-`assert`), and the readers of what the toolchain leaves in the image:
+`StringBuilder`, `assert`), and the readers of what the toolchain leaves in the image:
 `memory/section.mln` (a linker-collected section by name, as a `Slice<T>`),
 `format/mbin.mln` (an MBIN executable image in a buffer: header fields, the
 section directory, virtual-address translation) and `meta/annotations.mln`
@@ -52,6 +52,23 @@ String literals retain a trailing NUL for compatibility, but `str.len()` uses
 the stored byte length and therefore also handles embedded NULs. Use
 `as_c_str()` explicitly for an arbitrary view; only literals retain the old
 implicit conversion to `char*`/`char[]`.
+
+`text/string_builder.mln` wraps caller-owned storage in a fixed-capacity,
+allocation-free builder. Integer conversion is separate from appending: an
+`i32` writes into a caller-provided 12-byte buffer and returns a borrowed
+`str`, which can be passed directly to `append`.
+
+```mln
+import str from "str.mln";
+import { StringBuilder } from "text/string_builder.mln";
+
+char storage[128];
+char number[12];
+StringBuilder line;
+line.init(&storage[0], storage.length);
+line.append("pid=");
+line.append(42.to_str(&number[0]));
+```
 
 `assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it
