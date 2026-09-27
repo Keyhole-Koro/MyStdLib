@@ -1,0 +1,133 @@
+package string;
+
+import allocator from "../memory/allocator.mln";
+
+/** Growable owned string allocated through the process-wide allocator.
+ *
+ * The bytes are length-aware and may contain embedded NUL. Moving a String
+ * transfers its allocation; the compiler invokes drop() for the final owner.
+ * Allocation failure is reported by reserve/append/push returning false.
+ *
+ * @property data Owned byte allocation, or null for an empty allocation.
+ * @property length Number of initialized text bytes.
+ * @property capacity Number of bytes available at data.
+ */
+export struct String {
+    u8 *data;
+    i32 length;
+    i32 capacity;
+};
+
+/** Creates an empty string with requested initial capacity.
+ * @param capacity Initial byte capacity; negative values behave as zero.
+ * @return Owned string. Its capacity is zero if allocation failed.
+ */
+export String with_capacity(i32 capacity) {
+    String result = String {};
+    if (capacity > 0) {
+        i32 pointer = allocator.alloc(capacity);
+        if (pointer != 0) {
+            result.data = (u8*)pointer;
+            result.capacity = capacity;
+        }
+    }
+    return result;
+}
+
+/** Creates an owned copy of a borrowed string.
+ * @return Empty zero-capacity String when allocation fails.
+ */
+export String from_str(str value) {
+    String result = with_capacity(value.length);
+    if (value.length == 0 || result.capacity != 0) {
+        result.append(value);
+    }
+    return result;
+}
+
+/** Releases this string's allocation. Called automatically for the owner. */
+export void (String *self) drop() {
+    allocator.free((i32)self->data);
+    self->data = (u8*)0;
+    self->length = 0;
+    self->capacity = 0;
+}
+
+/** Returns the current byte length. */
+export i32 (String *self) len() { return self->length; }
+
+/** Returns the allocated byte capacity. */
+export i32 (String *self) capacity_bytes() { return self->capacity; }
+
+/** Tests whether no text bytes are present. */
+export bool (String *self) is_empty() { return self->length == 0; }
+
+/** Borrows the initialized bytes as str. */
+export str (String *self) as_str() {
+    return str { data: (char*)self->data, length: self->length };
+}
+
+/** Removes the contents while retaining the allocation. */
+export void (String *self) clear() { self->length = 0; }
+
+/** Ensures room for additional more bytes without changing the contents.
+ * @return True on success; false leaves self unchanged.
+ */
+export bool (String *self) reserve(i32 additional) {
+    if (additional < 0) { return false; }
+    i32 required = self->length + additional;
+    if (required < self->length) { return false; }
+    if (required <= self->capacity) { return true; }
+
+    i32 next = self->capacity;
+    if (next < 4) { next = 4; }
+    while (next < required) {
+        i32 grown = next + next;
+        if (grown <= next) { next = required; break; }
+        next = grown;
+    }
+
+    i32 pointer = allocator.alloc(next);
+    if (pointer == 0) { return false; }
+    u8 *replacement = (u8*)pointer;
+    i32 i = 0;
+    while (i < self->length) {
+        replacement[i] = self->data[i];
+        i++;
+    }
+    allocator.free((i32)self->data);
+    self->data = replacement;
+    self->capacity = next;
+    return true;
+}
+
+/** Appends all bytes from value atomically.
+ * @return True on success; false leaves the text unchanged.
+ */
+export bool (String *self) append(str value) {
+    i32 source_offset = -1;
+    i32 source_address = (i32)value.data;
+    i32 allocation_start = (i32)self->data;
+    if (allocation_start != 0 && source_address >= allocation_start &&
+        source_address + value.length <= allocation_start + self->length) {
+        source_offset = source_address - allocation_start;
+    }
+    if (!self.reserve(value.length)) { return false; }
+    char *source = value.data;
+    if (source_offset >= 0) { source = (char*)(self->data + source_offset); }
+    i32 i = 0;
+    while (i < value.length) {
+        self->data[self->length + i] = (u8)source[i];
+        i++;
+    }
+    self->length = self->length + value.length;
+    return true;
+}
+
+/** Appends one byte, growing as necessary. */
+export bool (String *self) push(u8 value) {
+    if (!self.reserve(1)) { return false; }
+    self->data[self->length] = value;
+    self->length++;
+    return true;
+}

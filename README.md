@@ -74,6 +74,26 @@ line.append(number.as_str());
 needed, the heap-owned `String` API. NUL-terminated pointers belong at explicit
 foreign-system boundaries rather than in ordinary text code.
 
+`text/string.mln` provides growable ownership. Its allocator is selected once
+by the executable through `memory/allocator.mln`; MyOS installs the kernel heap
+and MyAppFramework installs its process-local `sbrk` heap. A moved String is not
+freed by the source binding, and the compiler calls `drop()` for the final
+owner automatically.
+
+```mln
+import string from "text/string.mln";
+import { String } from "text/string.mln";
+
+String line = string.with_capacity(128);
+line.append("pid=");
+InlineString<12> pid = 42.to_string();
+line.append(pid.as_str());
+```
+
+`reserve`, `append`, and `push` return false on allocation failure and leave
+the existing text intact. `String` is length-aware and does not reserve a NUL
+terminator; use `InlineCString<N>` at a `char *` boundary.
+
 `assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it
 must provide `assert_fail(char* message)` for their runtime-specific failure
