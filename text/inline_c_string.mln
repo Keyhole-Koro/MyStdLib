@@ -1,0 +1,99 @@
+package inline_c_string;
+
+/** Fixed-size owned buffer for a NUL-terminated system boundary.
+ *
+ * Ordinary MyLang text should use `str` or `InlineString<N>`. This type exists
+ * for APIs that still require `char *`; one of its N bytes is always reserved
+ * for the terminator. Mutations are atomic and never silently truncate.
+ *
+ * @property data Inline C-compatible storage.
+ * @property length Number of bytes before the terminator.
+ */
+export struct InlineCString<const N> {
+    char data[N];
+    i32 length;
+};
+
+/** Return the number of text bytes, excluding the terminator. */
+export i32 (InlineCString<N> *self) len() { return self->length; }
+
+/** Return the maximum text length, excluding the terminator slot. */
+export i32 (InlineCString<N> *self) capacity() { return self->data.length - 1; }
+
+/** Return the unused text capacity. */
+export i32 (InlineCString<N> *self) remaining() {
+    return self.capacity() - self->length;
+}
+
+/** Test whether this string contains no bytes. */
+export bool (InlineCString<N> *self) is_empty() { return self->length == 0; }
+
+/** Remove all text and restore the NUL terminator. */
+export void (InlineCString<N> *self) clear() {
+    self->length = 0;
+    self->data[0] = (char)0;
+}
+
+/** Append a complete string view.
+ * @param value Bytes to append. Embedded NUL is rejected because it cannot be
+ * represented faithfully by a C string.
+ * @return True on success; false leaves self unchanged.
+ */
+export bool (InlineCString<N> *self) append(str value) {
+    if (value.length > self.remaining()) { return false; }
+    i32 i = 0;
+    while (i < value.length) {
+        if (value.data[i] == 0) { return false; }
+        i++;
+    }
+    i = 0;
+    while (i < value.length) {
+        self->data[self->length + i] = value.data[i];
+        i++;
+    }
+    self->length = self->length + value.length;
+    self->data[self->length] = (char)0;
+    return true;
+}
+
+/** Append one non-NUL byte atomically. */
+export bool (InlineCString<N> *self) push(u8 value) {
+    if (value == 0 || self->length >= self.capacity()) { return false; }
+    self->data[self->length] = (char)value;
+    self->length++;
+    self->data[self->length] = (char)0;
+    return true;
+}
+
+/** Shorten the string to at most length bytes. */
+export void (InlineCString<N> *self) truncate(i32 length) {
+    if (length < 0) { length = 0; }
+    if (length < self->length) { self->length = length; }
+    self->data[self->length] = (char)0;
+}
+
+/** Borrow the text bytes as a length-aware MyLang string. */
+export str (InlineCString<N> *self) as_str() {
+    return str { data: &self->data[0], length: self->length };
+}
+
+/** Borrow the NUL-terminated representation for a system/FFI call. */
+export char * (InlineCString<N> *self) as_ptr() { return &self->data[0]; }
+
+/** Recompute length after a foreign API wrote through as_ptr().
+ * @return True when a terminator was found; false when the buffer had to be
+ * terminated at its final byte.
+ */
+export bool (InlineCString<N> *self) sync_from_ptr() {
+    i32 i = 0;
+    while (i < self->data.length) {
+        if (self->data[i] == 0) {
+            self->length = i;
+            return true;
+        }
+        i++;
+    }
+    self->length = self->data.length - 1;
+    self->data[self->length] = (char)0;
+    return false;
+}

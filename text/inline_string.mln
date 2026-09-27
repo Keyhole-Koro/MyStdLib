@@ -1,0 +1,94 @@
+package inline_string;
+
+/** Fixed-capacity string stored entirely inside the value.
+ *
+ * `N` is a compile-time byte capacity. The contents are not NUL-terminated;
+ * use `as_str()` for text APIs and an explicit C-string conversion at an FFI
+ * boundary. This type never allocates.
+ *
+ * @property data Inline byte storage.
+ * @property length Number of initialized string bytes.
+ */
+export struct InlineString<const N> {
+    u8 data[N];
+    i32 length;
+};
+
+/** Initialize an empty inline string. */
+export void (InlineString<N> *self) init() {
+    self->length = 0;
+}
+
+/** Return the logical byte length.
+ * @return Number of initialized bytes.
+ */
+export i32 (InlineString<N> *self) len() {
+    return self->length;
+}
+
+/** Return the compile-time byte capacity.
+ * @return Maximum number of bytes this value can contain.
+ */
+export i32 (InlineString<N> *self) capacity() {
+    return self->data.length;
+}
+
+/** Return unused byte capacity.
+ * @return Number of additional bytes that can be appended.
+ */
+export i32 (InlineString<N> *self) remaining() {
+    return self->data.length - self->length;
+}
+
+/** Test whether the string contains no bytes.
+ * @return True when len() is zero.
+ */
+export bool (InlineString<N> *self) is_empty() {
+    return self->length == 0;
+}
+
+/** Remove all contents. */
+export void (InlineString<N> *self) clear() {
+    self->length = 0;
+}
+
+/** Append all bytes from a string view atomically.
+ * @param value Text to append; embedded NUL bytes are preserved.
+ * @return True on success. False leaves self unchanged when capacity is insufficient.
+ */
+export bool (InlineString<N> *self) append(str value) {
+    if (value.length > self.remaining()) { return false; }
+    i32 i = 0;
+    while (i < value.length) {
+        self->data[self->length + i] = (u8)value.data[i];
+        i++;
+    }
+    self->length = self->length + value.length;
+    return true;
+}
+
+/** Append one byte.
+ * @param value Byte to append.
+ * @return True on success, false when full.
+ */
+export bool (InlineString<N> *self) push(u8 value) {
+    if (self->length >= self->data.length) { return false; }
+    self->data[self->length] = value;
+    self->length++;
+    return true;
+}
+
+/** Shorten the string to at most `length` bytes.
+ * @param length New maximum length; negative values clamp to zero.
+ */
+export void (InlineString<N> *self) truncate(i32 length) {
+    if (length < 0) { length = 0; }
+    if (length < self->length) { self->length = length; }
+}
+
+/** Borrow the initialized bytes as a string view.
+ * @return View valid while self remains alive and is not mutably borrowed.
+ */
+export str (InlineString<N> *self) as_str() {
+    return str { data: (char*)(&self->data[0]), length: self->length };
+}

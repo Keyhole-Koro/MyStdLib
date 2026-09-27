@@ -1,6 +1,7 @@
 package str;
 
 import { Option } from "option.mln";
+import { InlineString } from "text/inline_string.mln";
 
 // `str` is MyLang's borrowed, length-aware string view. Its layout is owned
 // by the language (`char* data`, `i32 length`); this module supplies the
@@ -350,13 +351,36 @@ export i32 itoa(i32 value, char* buf) {
     return length;
 }
 
-/** Convert an integer into a borrowed decimal string view.
- * @param buffer Caller-owned storage with room for 12 bytes.
- * @return View over the written decimal representation.
+/** Convert an integer into an owned, inline decimal string.
+ * @return Decimal representation with no allocation.
  */
-export str (i32 self) to_str(char *buffer) {
-    i32 length = itoa(self, buffer);
-    return str { data: buffer, length: length };
+export InlineString<12> (i32 self) to_string() {
+    InlineString<12> result = InlineString<12> {};
+    if (self == 0) {
+        result.push((u8)'0');
+    } else if (self == -2147483647 - 1) {
+        result.append("-2147483648");
+    } else {
+        i32 value = self;
+        bool negative = value < 0;
+        if (negative) { value = 0 - value; }
+        while (value != 0) {
+            result.push((u8)('0' + value % 10));
+            value = value / 10;
+        }
+        if (negative) { result.push((u8)'-'); }
+
+        i32 left = 0;
+        i32 right = result.length - 1;
+        while (left < right) {
+            u8 byte = result.data[left];
+            result.data[left] = result.data[right];
+            result.data[right] = byte;
+            left++;
+            right--;
+        }
+    }
+    return result;
 }
 
 /** Convert an integer to lowercase hexadecimal without a prefix.

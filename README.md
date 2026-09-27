@@ -2,8 +2,8 @@
 
 Shared MyLang standard library: generic containers (`Vec`, `Slice`, `Arena`,
 `RingBuffer`, `IntrusiveList`, `HashMap`, `Option`, `Result`) plus string,
-byte, bit-array, and assertion helpers (`str`, `bytes`, `bitset`, `strbuf`,
-`StringBuilder`, `assert`), and the readers of what the toolchain leaves in the image:
+byte, bit-array, and assertion helpers (`str`, `InlineString<N>`, `bytes`,
+`bitset`, `assert`), and the readers of what the toolchain leaves in the image:
 `memory/section.mln` (a linker-collected section by name, as a `Slice<T>`),
 `format/mbin.mln` (an MBIN executable image in a buffer: header fields, the
 section directory, virtual-address translation) and `meta/annotations.mln`
@@ -53,22 +53,26 @@ the stored byte length and therefore also handles embedded NULs. Use
 `as_c_str()` explicitly for an arbitrary view; only literals retain the old
 implicit conversion to `char*`/`char[]`.
 
-`text/string_builder.mln` wraps caller-owned storage in a fixed-capacity,
-allocation-free builder. Integer conversion is separate from appending: an
-`i32` writes into a caller-provided 12-byte buffer and returns a borrowed
-`str`, which can be passed directly to `append`.
+`text/inline_string.mln` provides a fixed-capacity, allocation-free owned
+string. `N` is the full byte capacity: contents are length-aware and do not
+reserve a NUL slot. Appends are atomic and return false without changing the
+value when the complete input does not fit. A named struct literal supplies
+the empty zero value, so no separate initialization call is needed.
 
 ```mln
 import str from "str.mln";
-import { StringBuilder } from "text/string_builder.mln";
+import { InlineString } from "text/inline_string.mln";
 
-char storage[128];
-char number[12];
-StringBuilder line;
-line.init(&storage[0], storage.length);
+InlineString<128> line = InlineString<128> {};
 line.append("pid=");
-line.append(42.to_str(&number[0]));
+InlineString<12> number = 42.to_string();
+line.append(number.as_str());
 ```
+
+`str` is only a borrowed view; it is not writable storage. Use
+`InlineString<N>` for bounded local/field ownership and, once allocation is
+needed, the heap-owned `String` API. NUL-terminated pointers belong at explicit
+foreign-system boundaries rather than in ordinary text code.
 
 `assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it
