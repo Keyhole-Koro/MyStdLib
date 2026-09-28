@@ -5,7 +5,7 @@ package process;
 
 import { os_call } from "../platform/myos/syscall.masm";
 import { OsService } from "../../../contracts/myos/services.contract.mln";
-import { Result } from "../result.mln";
+import { Result } from "../core/result.mln";
 import { SpawnError } from "../../../contracts/process/spawn.contract.mln";
 import { ProcessControlError, ProcessExitStatus } from "../../../contracts/process/control.contract.mln";
 import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs } from "../../../contracts/myos/process-args.contract.mln";

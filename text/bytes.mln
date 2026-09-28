@@ -1,6 +1,6 @@
 package bytes;
 
-import { Option } from "../option.mln";
+import { Option } from "../core/option.mln";
 
 // Raw byte-buffer operations: the memset / memcpy / memcmp layer.
 //

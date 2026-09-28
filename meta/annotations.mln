@@ -24,9 +24,9 @@ package annotations;
 
 import { Slice } from "../memory/slice.mln";
 import { as_slice } from "../memory/section.mln";
-import { Option } from "../option.mln";
+import { Option } from "../core/option.mln";
 import mbin from "../format/mbin.mln";
-import str from "../str.mln";
+import str from "../text/str.mln";
 
 /** One annotation row, stored as eight 32-bit words.
  * @property name Annotation identifier.

@@ -34,13 +34,13 @@ Used by [MyKernel](https://github.com/Keyhole-Koro/MyKernel),
 import tests. See [GENERICS.md](GENERICS.md) for the generic container API.
 
 Every module is imported by explicit relative path (there is no implicit
-prelude): `import { Vec } from "vec.mln";` -- a type's exported methods
-(`v.push(x)`, `s.len()`) travel with it. `str.mln` supplies the compiler-known
+prelude): `import { Vec } from "collections/vec.mln";` -- a type's exported methods
+(`v.push(x)`, `s.len()`) travel with it. `text/str.mln` supplies the compiler-known
 borrowed `str` view (`{ char* data; i32 length; }`) and its bridge to legacy
 `char*` buffers:
 
 ```mln
-import str from "str.mln";
+import str from "text/str.mln";
 
 str name = "MyOS";
 if (name.starts_with("My")) {
@@ -60,7 +60,7 @@ value when the complete input does not fit. A named struct literal supplies
 the empty zero value, so no separate initialization call is needed.
 
 ```mln
-import str from "str.mln";
+import str from "text/str.mln";
 import { InlineString } from "text/inline_string.mln";
 
 InlineString<128> line = InlineString<128> {};
@@ -94,14 +94,14 @@ line.append(pid.as_str());
 the existing text intact. `String` is length-aware and does not reserve a NUL
 terminator; use `InlineCString<N>` at a `char *` boundary.
 
-`assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
+`testing/assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it
 must provide `assert_fail(char* message)` for their runtime-specific failure
 behaviour (for example, printing and halting in a kernel test).
 
 ```mln
-import assert from "assert.mln";
-import { assert_eq } from "assert.mln";
+import assert from "testing/assert.mln";
+import { assert_eq } from "testing/assert.mln";
 
 void assert_fail(char* message) {
     // runtime-specific reporting and termination

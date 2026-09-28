@@ -1,7 +1,7 @@
 package str;
 
-import { Option } from "option.mln";
-import { InlineString } from "text/inline_string.mln";
+import { Option } from "../core/option.mln";
+import { InlineString } from "inline_string.mln";
 
 // `str` is MyLang's borrowed, length-aware string view. Its layout is owned
 // by the language (`char* data`, `i32 length`); this module supplies the

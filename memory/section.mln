@@ -16,8 +16,8 @@ package section;
 // The compiler's own use is the annotation metadata table (meta/annotations.mln).
 
 import { Slice } from "slice.mln";
-import { Option } from "../option.mln";
-import str from "../str.mln";
+import { Option } from "../core/option.mln";
+import str from "../text/str.mln";
 
 extern i32 __sections[];
 

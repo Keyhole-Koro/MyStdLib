@@ -5,8 +5,8 @@ package fs;
 
 import { os_call } from "../platform/myos/syscall.masm";
 import { OsService } from "../../../contracts/myos/services.contract.mln";
-import { Result } from "../result.mln";
-import { Option } from "../option.mln";
+import { Result } from "../core/result.mln";
+import { Option } from "../core/option.mln";
 import { FsError, SeekWhence } from "../../../contracts/io/fs.contract.mln";
 import {
     FsOpenArgs, FsCreateArgs, FsMkdirArgs, FsRemoveArgs, FsReadArgs,

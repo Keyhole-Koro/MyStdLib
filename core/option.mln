@@ -1,0 +1,9 @@
+/** An optional value represented by a payload enum.
+ * Construct with `Some(value)` or `None`, and inspect with `case`.
+ * @property Some Contains the present value.
+ * @property None Represents the absence of a value.
+ */
+export enum Option<T> {
+    Some(T),
+    None,
+}

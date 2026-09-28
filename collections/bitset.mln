@@ -1,6 +1,6 @@
 package bitset;
 
-import { Option } from "../option.mln";
+import { Option } from "../core/option.mln";
 
 // Bit array over a caller-owned byte buffer.
 //
