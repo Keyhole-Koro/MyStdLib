@@ -10,7 +10,7 @@ package annotations;
 //
 //     Annotations it = annotations.named("app");
 //     while (it.next()) {
-//         register(it.type(), it.size(), it.fn(), it.arg(0), it.text(1));
+//         // Read fields with Result after next() has selected a row.
 //     }
 //
 // What a row means is the reader's business -- the framework that declared
@@ -25,6 +25,7 @@ package annotations;
 import { Slice } from "../memory/slice.mln";
 import { as_slice } from "../memory/section.mln";
 import { Option } from "../core/option.mln";
+import { Result } from "../core/result.mln";
 import mbin from "../format/mbin.mln";
 import str from "../text/str.mln";
 
@@ -66,6 +67,12 @@ export struct Annotations {
     AnnotationRow *cur;  // 0 before the first next() and after the last
     char *image;         // 0: the running program's table; else the MBIN image the rows live in
 };
+
+/** Failure while reading the current annotation row. */
+export enum AnnotationError {
+    NoCurrentRow,
+    InvalidArgumentIndex(i32),
+}
 
 Annotations make(char *name, char *type) {
     return Annotations {
@@ -186,57 +193,84 @@ export void (Annotations *it) reset() {
 }
 
 /** Get the current row.
- * @return Current row, or null when there is no current match.
+ * @return Some(current row), or None when there is no current match.
  */
-export AnnotationRow *(Annotations *it) row() { return it->cur; }
+export Option<AnnotationRow*> (Annotations *it) row() {
+    if (it->cur == 0) { return None; }
+    return Some(it->cur);
+}
 
 /** Get the current annotation name.
- * @return Annotation name, or an empty string when there is no current row.
+ * @return Ok(annotation name), or Err(NoCurrentRow) when there is no current row.
  */
-export char *(Annotations *it) name() { if (it->cur == 0) { return ""; } return string_of(it, it->cur->name); }
+export Result<char*, AnnotationError> (Annotations *it) name() {
+    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(string_of(it, it->cur->name));
+}
 /** Get the current function address.
- * @return Function address, or zero when there is no current row.
+ * @return Ok(function address), or Err(NoCurrentRow) when there is no current row.
  */
-export i32 (Annotations *it) fn()      { if (it->cur == 0) { return 0; }  return it->cur->fn; }
+export Result<i32, AnnotationError> (Annotations *it) fn() {
+    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(it->cur->fn);
+}
 /** Get the current receiver type name.
- * @return Type name, or an empty string for free functions/no current row.
+ * @return Ok(type name), or Err(NoCurrentRow); free functions have an empty type name.
  */
-export char *(Annotations *it) type() { if (it->cur == 0) { return ""; } return string_of(it, it->cur->type); }
+export Result<char*, AnnotationError> (Annotations *it) type() {
+    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(string_of(it, it->cur->type));
+}
 /** Get the current receiver type size.
- * @return Type size, or zero for free functions/no current row.
+ * @return Ok(type size), or Err(NoCurrentRow); free functions have size zero.
  */
-export i32 (Annotations *it) size()    { if (it->cur == 0) { return 0; }  return it->cur->size; }
+export Result<i32, AnnotationError> (Annotations *it) size() {
+    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(it->cur->size);
+}
 /** Get the current annotation's argument count.
- * @return Argument count, or zero when there is no current row.
+ * @return Ok(argument count), or Err(NoCurrentRow) when there is no current row.
  */
-export i32 (Annotations *it) argc()    { if (it->cur == 0) { return 0; }  return it->cur->argc; }
+export Result<i32, AnnotationError> (Annotations *it) argc() {
+    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(it->cur->argc);
+}
 
 /** Read a numeric or boolean argument.
- * @param k Argument index, from zero through two.
- * @return Stored integer value; zero for an invalid index or absent row.
+ * @param k Valid argument index in the current row.
+ * @return Ok(stored integer), or Err when the row/index is invalid.
  */
-export i32 (Annotations *it) arg(i32 k) {
-    if (it->cur == 0) { return 0; }
-    if (k == 0) { return it->cur->a0; }
-    if (k == 1) { return it->cur->a1; }
-    if (k == 2) { return it->cur->a2; }
-    return 0;
+export Result<i32, AnnotationError> (Annotations *it) arg(i32 k) {
+    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    if (k < 0 || k >= it->cur->argc || k >= 3) { return Err(AnnotationError::InvalidArgumentIndex(k)); }
+    if (k == 0) { return Ok(it->cur->a0); }
+    if (k == 1) { return Ok(it->cur->a1); }
+    return Ok(it->cur->a2);
 }
 
 /** Read an argument as a string.
- * @param k Argument index, from zero through two.
- * @return String value, or an empty string when absent or not a string.
+ * @param k Valid argument index in the current row.
+ * @return Ok(string value), or Err when the row/index is invalid.
  */
-export char *(Annotations *it) text(i32 k) {
-    i32 v = it->arg(k);
-    if (v == 0) { return ""; }
-    return string_of(it, (char*)v);
+export Result<char*, AnnotationError> (Annotations *it) text(i32 k) {
+    Result<i32, AnnotationError> argument = it->arg(k);
+    i32 v = case argument of {
+        Ok(value) -> value;
+        Err(error) -> ({ return Err(error); });
+    };
+    if (v == 0) { return Ok(""); }
+    return Ok(string_of(it, (char*)v));
 }
 
 /** Read an argument as a boolean flag.
- * @param k Argument index, from zero through two.
- * @return True when the stored value is non-zero.
+ * @param k Valid argument index in the current row.
+ * @return Ok(true) for a non-zero value, or Err when the row/index is invalid.
  */
-export bool (Annotations *it) flag(i32 k) {
-    return it->arg(k) != 0;
+export Result<bool, AnnotationError> (Annotations *it) flag(i32 k) {
+    Result<i32, AnnotationError> argument = it->arg(k);
+    i32 value = case argument of {
+        Ok(v) -> v;
+        Err(error) -> ({ return Err(error); });
+    };
+    return Ok(value != 0);
 }

@@ -1,5 +1,14 @@
 package allocator;
 
+import { Result } from "../core/result.mln";
+
+/** Reasons an allocation request can fail. */
+export enum AllocationError {
+    InvalidSize,
+    OutOfMemory,
+    NotConfigured,
+}
+
 // The executable selects its allocator at startup. Keeping these as function
 // pointers lets the same owned containers run in the kernel, an application
 // process, or a freestanding compiler test without depending on one runtime.
@@ -7,7 +16,7 @@ i32 g_allocate = 0;
 i32 g_deallocate = 0;
 
 /** Installs the allocation functions used by owned standard-library values.
- * @param allocate Function `(i32 size) -> i32 pointer`; zero reports failure.
+ * @param allocate Function `(i32 size) -> Result<i32, AllocationError>`.
  * @param deallocate Function `(i32 pointer) -> void`; pointer may be zero.
  */
 export void configure(i32 allocate, i32 deallocate) {
@@ -16,11 +25,13 @@ export void configure(i32 allocate, i32 deallocate) {
 }
 
 /** Allocates size bytes with the configured runtime allocator.
- * @return Allocation address, or zero when unavailable or allocation fails.
+ * @return `Ok(address)` on success, or `Err(AllocationError)` on failure.
  */
-export i32 alloc(i32 size) {
-    if (size <= 0 || g_allocate == 0) { return 0; }
-    return g_allocate(size);
+export Result<i32, AllocationError> alloc(i32 size) {
+    if (size <= 0) { return Err(AllocationError::InvalidSize); }
+    if (g_allocate == 0) { return Err(AllocationError::NotConfigured); }
+    Result<i32, AllocationError> allocation = g_allocate(size);
+    return allocation;
 }
 
 /** Releases an allocation through the configured runtime allocator. */

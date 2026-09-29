@@ -25,7 +25,10 @@ export struct String {
 export String with_capacity(i32 capacity) {
     String result = String {};
     if (capacity > 0) {
-        i32 pointer = allocator.alloc(capacity);
+        i32 pointer = case allocator.alloc(capacity) of {
+            Ok(p) -> p;
+            Err(_) -> 0;
+        };
         if (pointer != 0) {
             result.data = (u8*)pointer;
             result.capacity = capacity;
@@ -87,8 +90,10 @@ export bool (String *self) reserve(i32 additional) {
         next = grown;
     }
 
-    i32 pointer = allocator.alloc(next);
-    if (pointer == 0) { return false; }
+    i32 pointer = case allocator.alloc(next) of {
+        Ok(p) -> p;
+        Err(_) -> ({ return false; });
+    };
     u8 *replacement = (u8*)pointer;
     i32 i = 0;
     while (i < self->length) {

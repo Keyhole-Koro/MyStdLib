@@ -1,6 +1,7 @@
 package str;
 
 import { Option } from "../core/option.mln";
+import { Result } from "../core/result.mln";
 import { InlineString } from "inline_string.mln";
 
 // `str` is MyLang's borrowed, length-aware string view. Its layout is owned
@@ -420,12 +421,21 @@ export i32 xtoa(i32 value, char* buf) {
     return n;
 }
 
+/** Failure while parsing a signed decimal prefix.
+ * @property NoDigits No decimal digit followed the optional sign.
+ * @property Overflow The parsed value does not fit in i32.
+ */
+export enum ParseIntError {
+    NoDigits,
+    Overflow,
+}
+
 /** Parse a signed decimal prefix from a string.
  * Parsing stops at the first non-digit byte.
  * @param s String to parse; an optional leading plus or minus is accepted.
- * @return Parsed integer, or zero when no decimal digits follow the optional sign.
+ * @return Ok(parsed integer), or Err when no digits follow the sign or the value overflows i32.
  */
-export i32 atoi(char* s) {
+export Result<i32, ParseIntError> atoi(char* s) {
     i32 i = 0;
     i32 sign = 1;
 
@@ -436,20 +446,28 @@ export i32 atoi(char* s) {
         i = 1;
     }
 
+    // Accumulate negatively so the minimum signed value (-2147483648) fits.
+    i32 last_digit_limit = 7;
+    if (sign < 0) { last_digit_limit = 8; }
     i32 value = 0;
+    i32 digits = 0;
     while (1) {
         i32 c = (i32)s[i] & 0xFF;
         if (c < 48 || c > 57) {
             break;
         }
+        i32 digit = c - 48;
+        if (value < (0 - 214748364) || (value == (0 - 214748364) && digit > last_digit_limit)) {
+            return Err(ParseIntError::Overflow);
+        }
         // value * 10 as shifts: the target has no multiply instruction, so
         // codegen would otherwise expand this into a repeated-add loop.
-        value = (value << 3) + (value << 1) + (c - 48);
+        value = (value << 3) + (value << 1) - digit;
         i++;
+        digits++;
     }
 
-    if (sign < 0) {
-        return 0 - value;
-    }
-    return value;
+    if (digits == 0) { return Err(ParseIntError::NoDigits); }
+    if (sign < 0) { return Ok(value); }
+    return Ok(0 - value);
 }

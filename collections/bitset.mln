@@ -99,7 +99,7 @@ export Option<i32> find_clear(char* bits, i32 n, i32 start) {
                 return None;
             }
         }
-        if (get(bits, i) == 0) {
+        if (!get(bits, i)) {
             return Some(i);
         }
         i++;
