@@ -469,5 +469,5 @@ export Result<i32, ParseIntError> atoi(char* s) {
 
     if (digits == 0) { return Err(ParseIntError::NoDigits); }
     if (sign < 0) { return Ok(value); }
-    return Ok(0 - value);
+    return Ok(-value);
 }
