@@ -457,7 +457,7 @@ export Result<i32, ParseIntError> atoi(char* s) {
             break;
         }
         i32 digit = c - 48;
-        if (value < (0 - 214748364) || (value == (0 - 214748364) && digit > last_digit_limit)) {
+        if (value < -214748364 || (value == -214748364 && digit > last_digit_limit)) {
             return Err(ParseIntError::Overflow);
         }
         // value * 10 as shifts: the target has no multiply instruction, so
