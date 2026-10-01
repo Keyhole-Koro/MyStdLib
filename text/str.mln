@@ -452,11 +452,13 @@ export Result<i32, ParseIntError> atoi(char* s) {
     i32 value = 0;
     i32 digits = 0;
     while (1) {
+        // char may sign-extend when widened; mask to keep the original byte value.
         i32 c = (i32)s[i] & 0xFF;
-        if (c < 48 || c > 57) {
+        // ASCII decimal digits are contiguous; stop at the first non-digit.
+        if (c < '0' || c > '9') {
             break;
         }
-        i32 digit = c - 48;
+        i32 digit = c - '0';
         if (value < -214748364 || (value == -214748364 && digit > last_digit_limit)) {
             return Err(ParseIntError::Overflow);
         }
