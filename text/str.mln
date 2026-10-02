@@ -3,6 +3,8 @@ package str;
 import { Option } from "../core/option.mln";
 import { Result } from "../core/result.mln";
 import { InlineString } from "inline_string.mln";
+import ascii from "ascii.mln";
+import int32 from "../core/int32.mln";
 
 // `str` is MyLang's borrowed, length-aware string view. Its layout is owned
 // by the language (`char* data`, `i32 length`); this module supplies the
@@ -54,8 +56,8 @@ export i32 (str self) compare(str other) {
     if (other.length < n) { n = other.length; }
     i32 i = 0;
     while (i < n) {
-        i32 a = (i32)self.data[i] & 0xFF;
-        i32 b = (i32)other.data[i] & 0xFF;
+        i32 a = ascii.byte(self.data[i]);
+        i32 b = ascii.byte(other.data[i]);
         if (a != b) { return a - b; }
         i++;
     }
@@ -151,8 +153,8 @@ export i32 len(char* s) {
 export i32 cmp(char* a, char* b) {
     i32 i = 0;
     while (1) {
-        i32 ca = (i32)a[i] & 0xFF;
-        i32 cb = (i32)b[i] & 0xFF;
+        i32 ca = ascii.byte(a[i]);
+        i32 cb = ascii.byte(b[i]);
         if (ca != cb) {
             return ca - cb;
         }
@@ -181,8 +183,8 @@ export bool eq(char* a, char* b) {
 export i32 ncmp(char* a, char* b, i32 n) {
     i32 i = 0;
     while (i < n) {
-        i32 ca = (i32)a[i] & 0xFF;
-        i32 cb = (i32)b[i] & 0xFF;
+        i32 ca = ascii.byte(a[i]);
+        i32 cb = ascii.byte(b[i]);
         if (ca != cb) {
             return ca - cb;
         }
@@ -202,8 +204,8 @@ export i32 ncmp(char* a, char* b, i32 n) {
 export bool starts_with(char* s, char* prefix) {
     i32 i = 0;
     while (prefix[i] != 0) {
-        i32 cs = (i32)s[i] & 0xFF;
-        i32 cp = (i32)prefix[i] & 0xFF;
+        i32 cs = ascii.byte(s[i]);
+        i32 cp = ascii.byte(prefix[i]);
         if (cs != cp) {
             return false;
         }
@@ -272,9 +274,9 @@ export i32 cat(char* dst, char* src) {
  */
 export Option<i32> chr(char* s, i32 c) {
     i32 i = 0;
-    i32 want = c & 0xFF;
+    i32 want = ascii.byte(c);
     while (s[i] != 0) {
-        if (((i32)s[i] & 0xFF) == want) {
+        if (ascii.byte(s[i]) == want) {
             return Some(i);
         }
         i++;
@@ -311,13 +313,13 @@ export Option<i32> find(char* haystack, char* needle) {
  */
 export i32 itoa(i32 value, char* buf) {
     if (value == 0) {
-        buf[0] = 48; // '0'
+        buf[0] = '0';
         buf[1] = 0;
         return 1;
     }
 
     // Negating the minimum signed value cannot be represented as i32.
-    if (value == -2147483647 - 1) {
+    if (value == int32.MIN) {
         char minimum[12] = "-2147483648";
         i32 i = 0;
         while (i < 12) { buf[i] = minimum[i]; i++; }
@@ -325,17 +327,17 @@ export i32 itoa(i32 value, char* buf) {
     }
 
     bool is_negative = value < 0;
-    if (is_negative) { value = 0 - value; }
+    if (is_negative) { value = -value; }
     i32 remaining = value;
     i32 length = 0;
     while (remaining != 0) {
         i32 digit = remaining % 10;
-        buf[length] = 48 + digit; // '0' + digit, temporarily reversed
+        buf[length] = '0' + digit; // temporarily reversed
         length++;
         remaining = remaining / 10;
     }
     if (is_negative) {
-        buf[length] = 45; // '-'
+        buf[length] = '-';
         length++;
     }
 
@@ -359,12 +361,12 @@ export InlineString<12> (i32 self) to_string() {
     InlineString<12> result = InlineString<12> {};
     if (self == 0) {
         result.push((u8)'0');
-    } else if (self == -2147483647 - 1) {
+    } else if (self == int32.MIN) {
         result.append("-2147483648");
     } else {
         i32 value = self;
         bool negative = value < 0;
-        if (negative) { value = 0 - value; }
+        if (negative) { value = -value; }
         while (value != 0) {
             result.push((u8)('0' + value % 10));
             value = value / 10;
@@ -391,7 +393,7 @@ export InlineString<12> (i32 self) to_string() {
  */
 export i32 xtoa(i32 value, char* buf) {
     if (value == 0) {
-        buf[0] = 48; // '0'
+        buf[0] = '0';
         buf[1] = 0;
         return 1;
     }
@@ -410,9 +412,9 @@ export i32 xtoa(i32 value, char* buf) {
     while (shift >= 0) {
         i32 nibble = (value >> shift) & 15;
         if (nibble < 10) {
-            buf[n] = 48 + nibble;  // '0'
+            buf[n] = '0' + nibble;
         } else {
-            buf[n] = 87 + nibble;  // 'a' - 10
+            buf[n] = 'a' + (nibble - 10);
         }
         n++;
         shift = shift - 4;
@@ -439,10 +441,10 @@ export Result<i32, ParseIntError> atoi(char* s) {
     i32 i = 0;
     i32 sign = 1;
 
-    if (s[0] == 45) {        // '-'
+    if (s[0] == '-') {
         sign = -1;
         i = 1;
-    } else if (s[0] == 43) { // '+'
+    } else if (s[0] == '+') {
         i = 1;
     }
 
@@ -452,14 +454,12 @@ export Result<i32, ParseIntError> atoi(char* s) {
     i32 value = 0;
     i32 digits = 0;
     while (1) {
-        // char may sign-extend when widened; mask to keep the original byte value.
-        i32 c = (i32)s[i] & 0xFF;
-        // ASCII decimal digits are contiguous; stop at the first non-digit.
-        if (c < '0' || c > '9') {
+        i32 c = ascii.byte(s[i]);
+        if (!ascii.is_digit(c)) {
             break;
         }
         i32 digit = c - '0';
-        if (value < -214748364 || (value == -214748364 && digit > last_digit_limit)) {
+        if (value < int32.MIN_DIV_10 || (value == int32.MIN_DIV_10 && digit > last_digit_limit)) {
             return Err(ParseIntError::Overflow);
         }
         // value * 10 as shifts: the target has no multiply instruction, so

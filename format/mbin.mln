@@ -18,15 +18,16 @@ package mbin;
 // the text, which is what the kernel loader does too.
 
 import str from "../text/str.mln";
+import bytes from "../text/bytes.mln";
 import { Option } from "../core/option.mln";
 
 i32 MAGIC = 0x4D42494E;   // 'MBIN'
 
 i32 be32(char *p, i32 at) {
-    i32 b0 = p[at] & 0xFF;
-    i32 b1 = p[at + 1] & 0xFF;
-    i32 b2 = p[at + 2] & 0xFF;
-    i32 b3 = p[at + 3] & 0xFF;
+    i32 b0 = bytes.as_unsigned(p[at]);
+    i32 b1 = bytes.as_unsigned(p[at + 1]);
+    i32 b2 = bytes.as_unsigned(p[at + 2]);
+    i32 b3 = bytes.as_unsigned(p[at + 3]);
     return (b0 << 24) | (b1 << 16) | (b2 << 8) | b3;
 }
 

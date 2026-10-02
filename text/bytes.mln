@@ -11,6 +11,9 @@ import { Option } from "../core/option.mln";
 // Every count is in bytes and every buffer is caller-owned; nothing here
 // allocates. Reads mask with 0xFF because `char` sign-extends into i32.
 
+/** Zero-extends a byte-sized value to i32. */
+export i32 as_unsigned(i32 value) { return value & 0xFF; }
+
 /** Fill dst with the low byte of value.
  * @param dst Destination buffer of at least n bytes.
  * @param value Integer whose low byte is repeated.
@@ -18,7 +21,7 @@ import { Option } from "../core/option.mln";
  * @return Number of bytes written.
  */
 export i32 set(char* dst, i32 value, i32 n) {
-    i32 v = value & 0xFF;
+    i32 v = as_unsigned(value);
     i32 i = 0;
     while (i < n) {
         dst[i] = v;
@@ -83,8 +86,8 @@ export i32 move(char* dst, char* src, i32 n) {
 export i32 cmp(char* a, char* b, i32 n) {
     i32 i = 0;
     while (i < n) {
-        i32 ca = (i32)a[i] & 0xFF;
-        i32 cb = (i32)b[i] & 0xFF;
+        i32 ca = as_unsigned(a[i]);
+        i32 cb = as_unsigned(b[i]);
         if (ca != cb) {
             return ca - cb;
         }
@@ -113,10 +116,10 @@ export bool eq(char* a, char* b, i32 n) {
  * @return Index of the first match, or None if absent.
  */
 export Option<i32> find(char* buf, i32 n, i32 value) {
-    i32 want = value & 0xFF;
+    i32 want = as_unsigned(value);
     i32 i = 0;
     while (i < n) {
-        if (((i32)buf[i] & 0xFF) == want) {
+        if (as_unsigned(buf[i]) == want) {
             return Some(i);
         }
         i++;

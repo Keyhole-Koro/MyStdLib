@@ -14,7 +14,7 @@ import {
     FsEntrySizeArgs, FsIsDirArgs
 } from "../../../contracts/myos/fs-args.contract.mln";
 
-export i32 NAME_MAX = 16;
+export const i32 NAME_MAX = 16;
 /** Open a filesystem path.
  * @param path NUL-terminated path to open.
  * @return File descriptor on success, or the filesystem error.

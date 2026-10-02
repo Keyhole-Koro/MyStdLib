@@ -254,10 +254,7 @@ export Result<i32, AnnotationError> (Annotations *it) arg(i32 k) {
  */
 export Result<char*, AnnotationError> (Annotations *it) text(i32 k) {
     Result<i32, AnnotationError> argument = it->arg(k);
-    i32 v = case argument of {
-        Ok(value) -> value;
-        Err(error) -> ({ return Err(error); });
-    };
+    i32 v = argument?;
     if (v == 0) { return Ok(""); }
     return Ok(string_of(it, (char*)v));
 }
@@ -268,9 +265,6 @@ export Result<char*, AnnotationError> (Annotations *it) text(i32 k) {
  */
 export Result<bool, AnnotationError> (Annotations *it) flag(i32 k) {
     Result<i32, AnnotationError> argument = it->arg(k);
-    i32 value = case argument of {
-        Ok(v) -> v;
-        Err(error) -> ({ return Err(error); });
-    };
+    i32 value = argument?;
     return Ok(value != 0);
 }

@@ -1,0 +1,10 @@
+package int32;
+
+/** Smallest signed 32-bit integer. */
+export const i32 MIN = -2147483647 - 1;
+
+/** Largest signed 32-bit integer. */
+export const i32 MAX = 2147483647;
+
+/** MIN divided by 10, used by overflow-safe decimal parsers. */
+export const i32 MIN_DIV_10 = -214748364;

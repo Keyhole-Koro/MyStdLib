@@ -1,0 +1,27 @@
+package ascii;
+
+import bytes from "bytes.mln";
+
+/** Converts a possibly signed char value to its original unsigned byte value. */
+export i32 byte(i32 value) {
+    return bytes.as_unsigned(value);
+}
+
+/** Returns true when value is an ASCII decimal digit. */
+export bool is_digit(i32 value) {
+    i32 c = byte(value);
+    return c >= '0' && c <= '9';
+}
+
+/** Returns true when value is a printable ASCII byte. */
+export bool is_printable(i32 value) {
+    i32 c = byte(value);
+    return c >= ' ' && c <= '~';
+}
+
+/** Converts an ASCII uppercase letter to lowercase and leaves other bytes unchanged. */
+export i32 to_lower(i32 value) {
+    i32 c = byte(value);
+    if (c >= 'A' && c <= 'Z') { return c + ('a' - 'A'); }
+    return c;
+}

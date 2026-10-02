@@ -50,8 +50,9 @@ export bool (HashMap<T> *map) put(char *key, T value) {
     }
     i32 hash = 5381;
     i32 index = 0;
+    u8 *key_bytes = (u8*)key;
     while (key[index] != 0) {
-        hash = (hash * 33) + ((i32)key[index] & 0xFF);
+        hash = (hash * 33) + key_bytes[index];
         index++;
     }
     i32 slot = hash & (map->cap - 1);
@@ -99,8 +100,9 @@ export bool (HashMap<T> *map) get(char *key, T *out) {
     }
     i32 hash = 5381;
     i32 index = 0;
+    u8 *key_bytes = (u8*)key;
     while (key[index] != 0) {
-        hash = (hash * 33) + ((i32)key[index] & 0xFF);
+        hash = (hash * 33) + key_bytes[index];
         index++;
     }
     i32 slot = hash & (map->cap - 1);
