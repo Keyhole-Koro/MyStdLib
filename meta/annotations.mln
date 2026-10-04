@@ -26,6 +26,7 @@ import { Slice } from "../memory/slice.mln";
 import { as_slice } from "../memory/section.mln";
 import { Option } from "../core/option.mln";
 import { Result } from "../core/result.mln";
+import { CodeAddress } from "../core/address.mln";
 import mbin from "../format/mbin.mln";
 import str from "../text/str.mln";
 
@@ -41,7 +42,7 @@ import str from "../text/str.mln";
  */
 export struct AnnotationRow {
     char *name;      // the annotation's name
-    i32 fn;          // the annotated function
+    CodeAddress fn;  // the annotated function
     char *type;      // receiver type's name; "" for a plain function
     i32 size;        // sizeof that type; 0 for a plain function
     i32 argc;        // arguments given (defaults filled in)
@@ -210,7 +211,7 @@ export Result<char*, AnnotationError> (Annotations *it) name() {
 /** Get the current function address.
  * @return Ok(function address), or Err(NoCurrentRow) when there is no current row.
  */
-export Result<i32, AnnotationError> (Annotations *it) fn() {
+export Result<CodeAddress, AnnotationError> (Annotations *it) fn() {
     if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
     return Ok(it->cur->fn);
 }

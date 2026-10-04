@@ -12,14 +12,17 @@ export enum AllocationError {
 // The executable selects its allocator at startup. Keeping these as function
 // pointers lets the same owned containers run in the kernel, an application
 // process, or a freestanding compiler test without depending on one runtime.
-i32 g_allocate = 0;
-i32 g_deallocate = 0;
+fn(i32 size) -> Result<i32, AllocationError> g_allocate = 0;
+fn(i32 pointer) -> void g_deallocate = 0;
 
 /** Installs the allocation functions used by owned standard-library values.
  * @param allocate Function `(i32 size) -> Result<i32, AllocationError>`.
  * @param deallocate Function `(i32 pointer) -> void`; pointer may be zero.
  */
-export void configure(i32 allocate, i32 deallocate) {
+export void configure(
+    fn(i32 size) -> Result<i32, AllocationError> allocate,
+    fn(i32 pointer) -> void deallocate
+) {
     g_allocate = allocate;
     g_deallocate = deallocate;
 }

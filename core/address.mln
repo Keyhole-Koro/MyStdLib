@@ -1,0 +1,7 @@
+package address;
+
+/** A machine address naming executable code. */
+export newtype CodeAddress = i32;
+
+/** A machine address naming readable or writable memory. */
+export newtype MemoryAddress = i32;
