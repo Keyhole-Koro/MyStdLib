@@ -1,7 +1,7 @@
 package string;
 
-import allocator from "../memory/allocator.mln";
-import { Result } from "../core/result.mln";
+import allocator from "@std/memory/allocator.mln";
+import { Result } from "@std/core/result.mln";
 
 /** Growable owned string allocated through the process-wide allocator.
  *

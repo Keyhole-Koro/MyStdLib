@@ -1,6 +1,6 @@
 package allocator;
 
-import { Result } from "../core/result.mln";
+import { Result } from "@std/core/result.mln";
 
 /** Reasons an allocation request can fail. */
 export enum AllocationError {

@@ -17,9 +17,9 @@ package mbin;
 // va_to_offset(): text is mapped at entry & ~0xFFF, data at the page after
 // the text, which is what the kernel loader does too.
 
-import str from "../text/str.mln";
-import bytes from "../text/bytes.mln";
-import { Option } from "../core/option.mln";
+import str from "@std/text/str.mln";
+import bytes from "@std/text/bytes.mln";
+import { Option } from "@std/core/option.mln";
 
 i32 MAGIC = 0x4D42494E;   // 'MBIN'
 

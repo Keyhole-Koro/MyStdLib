@@ -22,13 +22,13 @@ package annotations;
 // from the image's virtual addresses; fn() stays what it is, an address in
 // the image's own space.
 
-import { Slice } from "../memory/slice.mln";
-import { as_slice } from "../memory/section.mln";
-import { Option } from "../core/option.mln";
-import { Result } from "../core/result.mln";
-import { CodeAddress } from "../core/address.mln";
-import mbin from "../format/mbin.mln";
-import str from "../text/str.mln";
+import { Slice } from "@std/memory/slice.mln";
+import { as_slice } from "@std/memory/section.mln";
+import { Option } from "@std/core/option.mln";
+import { Result } from "@std/core/result.mln";
+import { CodeAddress } from "@std/core/address.mln";
+import mbin from "@std/format/mbin.mln";
+import str from "@std/text/str.mln";
 
 /** One annotation row, stored as eight 32-bit words.
  * @property name Annotation identifier.

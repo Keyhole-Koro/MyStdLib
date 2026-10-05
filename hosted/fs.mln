@@ -3,16 +3,16 @@ package fs;
 // Filesystem API for a hosted MyLang program. This is the client side of
 // MyOS's filesystem service, not the filesystem implementation.
 
-import { os_call } from "../platform/myos/syscall.masm";
-import { OsService } from "../../../contracts/myos/services.contract.mln";
-import { Result } from "../core/result.mln";
-import { Option } from "../core/option.mln";
-import { FsError, SeekWhence } from "../../../contracts/io/fs.contract.mln";
+import { os_call } from "@std/platform/myos/syscall.masm";
+import { OsService } from "@contracts/myos/services.contract.mln";
+import { Result } from "@std/core/result.mln";
+import { Option } from "@std/core/option.mln";
+import { FsError, SeekWhence } from "@contracts/io/fs.contract.mln";
 import {
     FsOpenArgs, FsCreateArgs, FsMkdirArgs, FsRemoveArgs, FsReadArgs,
     FsWriteArgs, FsSeekArgs, FsCloseArgs, FsDirNextArgs,
     FsEntrySizeArgs, FsIsDirArgs
-} from "../../../contracts/myos/fs-args.contract.mln";
+} from "@contracts/myos/fs-args.contract.mln";
 
 export const i32 NAME_MAX = 16;
 /** Open a filesystem path.

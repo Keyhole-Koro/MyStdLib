@@ -1,10 +1,10 @@
 package str;
 
-import { Option } from "../core/option.mln";
-import { Result } from "../core/result.mln";
+import { Option } from "@std/core/option.mln";
+import { Result } from "@std/core/result.mln";
 import { InlineString } from "inline_string.mln";
 import ascii from "ascii.mln";
-import int32 from "../core/int32.mln";
+import int32 from "@std/core/int32.mln";
 
 // `str` is MyLang's borrowed, length-aware string view. Its layout is owned
 // by the language (`char* data`, `i32 length`); this module supplies the

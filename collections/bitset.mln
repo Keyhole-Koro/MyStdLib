@@ -1,7 +1,7 @@
 package bitset;
 
-import { Option } from "../core/option.mln";
-import byte_values from "../text/bytes.mln";
+import { Option } from "@std/core/option.mln";
+import byte_values from "@std/text/bytes.mln";
 
 // Bit array over a caller-owned byte buffer.
 //
