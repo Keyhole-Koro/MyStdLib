@@ -12,6 +12,23 @@ section directory, virtual-address translation) and `meta/annotations.mln`
 reads the table of an executable on disk; see
 `docs/design/toolchain-collected-sections.md` in MyComputer).
 
+Core traits (see `docs/traits.md` in MyLangCompiler):
+
+| trait | module | language feature |
+| --- | --- | --- |
+| `From<S>` | `core/convert.mln` | `?` across error types, `Type::from(v)` |
+| `Eq` | `core/cmp.mln` | `==` / `!=` |
+| `Hash` | `core/hash.mln` | `HashMap<K, V>` keys |
+| `Copy` | `core/copy.mln` | explicit copy semantics for safe structs |
+| `Iterator<T>` | `core/iter.mln` | `for (T x in it)` |
+| `Drop` | `core/drop.mln` | automatic cleanup (`String` implements it) |
+
+Debugging:
+
+| module | role |
+| --- | --- |
+| `debug/error_trace.mln` | error return trace: where an `Err` was created and each `?` it returned through, recorded by code built with `mlc --error-trace` (`depth()`, `site(i)`, `format(buf, cap)`) |
+
 Hosted modules:
 
 | module | role |

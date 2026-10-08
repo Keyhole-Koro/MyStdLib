@@ -1,0 +1,7 @@
+/** Deterministic cleanup run by the compiler when an owner goes out of scope.
+ * See docs/design/mylang-owned-values-and-drop.md in MyComputer; application
+ * code does not call drop() itself.
+ */
+export trait Drop {
+    void (Self *self) drop();
+}

@@ -1,0 +1,7 @@
+/** Equality between two values of the implementing type.
+ * `a == b` calls `a.eq(&b)` and `a != b` calls `!a.eq(&b)` for a type with an
+ * Eq impl; integers, pointers, and plain enums keep their built-in equality.
+ */
+export trait Eq {
+    bool (Self *self) eq(Self *other);
+}

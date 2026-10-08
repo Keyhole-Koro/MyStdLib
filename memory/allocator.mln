@@ -33,8 +33,7 @@ export void configure(
 export Result<i32, AllocationError> alloc(i32 size) {
     if (size <= 0) { return Err(AllocationError::InvalidSize); }
     if (g_allocate == 0) { return Err(AllocationError::NotConfigured); }
-    Result<i32, AllocationError> allocation = g_allocate(size);
-    return allocation;
+    return g_allocate(size);
 }
 
 /** Releases an allocation through the configured runtime allocator. */

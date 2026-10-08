@@ -1,0 +1,113 @@
+package error_trace;
+
+// Error return trace (MLC-022). A program compiled with `mlc --error-trace`
+// calls note() at every `return Err(...)` (the origin, which starts a new
+// trace) and at every `?` that propagates an error (one more hop). Each site
+// is a static string "file.mln:line function", with " (A -> B)" when the hop
+// converted the error through From. A build without the flag never calls
+// note(), so the trace stays empty and costs nothing.
+//
+// The trace is one per image: a user process has its own, the kernel's tasks
+// share one. A trace that is handled rather than propagated stays readable
+// until the next origin replaces it.
+
+i32 TRACE_CAPACITY = 32;
+
+/** Kind of a recorded site, as passed by the compiler. */
+export enum TraceKind {
+    ORIGIN = 1,      // `return Err(...)`: starts a new trace
+    PROPAGATED = 2,  // `?` returned the error to its caller
+}
+
+char *g_sites[32];
+i32 g_count = 0;
+i32 g_dropped = 0;
+
+/** Records one site. Called by compiler-generated code.
+ * @param site Static "file:line function" description of the site.
+ * @param kind TraceKind of the site.
+ */
+export void note(char *site, i32 kind) {
+    if (kind == TraceKind::ORIGIN) {
+        g_count = 0;
+        g_dropped = 0;
+    }
+    if (g_count < TRACE_CAPACITY) {
+        g_sites[g_count] = site;
+        g_count++;
+    } else {
+        g_dropped++;
+    }
+}
+
+/** Forgets the current trace. */
+export void clear() {
+    g_count = 0;
+    g_dropped = 0;
+}
+
+/** Number of recorded sites, origin first.
+ * @return Count of sites that site() can return.
+ */
+export i32 depth() {
+    return g_count;
+}
+
+/** Hops that did not fit after the first TRACE_CAPACITY sites.
+ * @return Count of sites left out of the trace.
+ */
+export i32 dropped() {
+    return g_dropped;
+}
+
+/** One recorded site.
+ * @param index 0 is where the error was created; later entries are the hops
+ *        it took toward the caller.
+ * @return The site description, or 0 when index is out of range.
+ */
+export char *site(i32 index) {
+    if (index < 0 || index >= g_count) { return (char*)0; }
+    return g_sites[index];
+}
+
+/** Writes the trace as text, one site per line:
+ *
+ *     error trace:
+ *       fs.mln:52 wait_for_completion (created)
+ *       fs.mln:977 write (SsdError -> FsError)
+ *
+ * @param buf Destination buffer, always NUL-terminated when cap > 0.
+ * @param cap Capacity of buf in bytes.
+ * @return Number of bytes written, excluding the terminator.
+ */
+export i32 format(char *buf, i32 cap) {
+    if (cap <= 0) { return 0; }
+    i32 used = 0;
+    used = append(buf, cap, used, "error trace:\n");
+    if (g_count == 0) {
+        used = append(buf, cap, used, "  (empty)\n");
+    }
+    i32 i = 0;
+    while (i < g_count) {
+        used = append(buf, cap, used, "  ");
+        used = append(buf, cap, used, g_sites[i]);
+        if (i == 0) { used = append(buf, cap, used, " (created)"); }
+        used = append(buf, cap, used, "\n");
+        i++;
+    }
+    if (g_dropped > 0) {
+        used = append(buf, cap, used, "  ... more hops not recorded\n");
+    }
+    return used;
+}
+
+i32 append(char *buf, i32 cap, i32 used, char *text) {
+    i32 k = 0;
+    while (text[k] != 0 && used + 1 < cap) {
+        buf[used] = text[k];
+        used++;
+        k++;
+    }
+    buf[used] = (char)0;
+    return used;
+}

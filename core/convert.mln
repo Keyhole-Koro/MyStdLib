@@ -1,0 +1,17 @@
+/** Conversion from S into the implementing type.
+ * `?` uses it to propagate an error of another type: in a function returning
+ * `Result<T, FsError>`, `ssd.write_block(b, buf)?` with a `Result<_, SsdError>`
+ * returns `Err(FsError::from(error))`.
+ *
+ * ```mln
+ * impl From<SsdError> for FsError {
+ *     FsError from(SsdError e) {
+ *         return case e of { SsdError::DeviceError -> FsError::IoError; };
+ *     }
+ * }
+ * impl From<SsdError> for FsError = FsError::IoError;   // every source value
+ * ```
+ */
+export trait From<S> {
+    Self from(S source);
+}

@@ -1,31 +1,40 @@
-/** Fixed-capacity string-keyed map using borrowed NUL-terminated keys.
- * Capacity must be a power of two. Deletion and automatic growth are omitted.
- * @property keys Caller-owned array of key addresses; zero marks an empty slot.
- * @property values Caller-owned array of values corresponding to keys.
- * @property cap Map capacity, or zero if initialized with an invalid capacity.
- * @property len Number of distinct keys currently stored.
+import { Eq } from "@std/core/cmp.mln";
+import { Hash } from "@std/core/hash.mln";
+
+/** Fixed-capacity open-addressed map over caller-owned storage.
+ *
+ * Capacity must be a positive power of two. `used` is a caller-owned byte
+ * array with one entry per key slot; it is separate from `keys` so every
+ * value of K, including zero and null-like values, remains a valid key.
+ * Deletion and automatic growth are intentionally omitted.
  */
 //
-//     HashMap<i32> m;
-//     m.init(keys, values, 8);
-//     m.put("answer", 42);
-//     i32 v;
-//     if (m.get("answer", &v)) { ... }
-export struct HashMap<T> {
-    i32 *keys;
-    T *values;
+//     Pid keys[8];
+//     Process* values[8];
+//     u8 used[8];
+//     HashMap<Pid, Process*> processes;
+//     processes.init(&keys[0], &values[0], &used[0], 8);
+//     processes.put(pid, process);
+export struct HashMap<K, V> {
+    K *keys;
+    V *values;
+    u8 *used;
     i32 cap;
     i32 len;
 };
 
-/** Initialize the map using caller-owned arrays.
- * @param keys Array of at least cap key slots.
- * @param values Array of at least cap value slots.
- * @param cap Positive power-of-two capacity; other values disable the map.
- */
-export void (HashMap<T> *map) init(i32 *keys, T *values, i32 cap) {
+/* Keep Hash's pointer receiver at this ordinary generic-function boundary.
+ * A generic receiver method cannot yet auto-borrow one of its own value
+ * parameters for a trait method, whereas a specialized generic function can. */
+export u32 hash_key<K: Hash>(K *key) {
+    return key.hash();
+}
+
+/** Initialize the map using caller-owned key, value, and occupancy arrays. */
+export void (HashMap<K, V> *map) init<K, V>(K *keys, V *values, u8 *used, i32 cap) {
     map->keys = keys;
     map->values = values;
+    map->used = used;
     map->len = 0;
     if (cap <= 0 || (cap & (cap - 1))) {
         map->cap = 0;
@@ -34,103 +43,52 @@ export void (HashMap<T> *map) init(i32 *keys, T *values, i32 cap) {
     map->cap = cap;
     i32 i = 0;
     while (i < cap) {
-        keys[i] = 0;
-        i = i + 1;
+        used[i] = 0;
+        i++;
     }
 }
 
 /** Insert a key/value pair or replace the value for an existing key.
- * @param key Borrowed NUL-terminated key, which must remain valid while stored.
- * @param value Value to insert or assign.
  * @return True on insertion or replacement, false if disabled or full.
  */
-export bool (HashMap<T> *map) put(char *key, T value) {
-    if (map->cap <= 0) {
-        return false;
-    }
-    i32 hash = 5381;
-    i32 index = 0;
-    u8 *key_bytes = (u8*)key;
-    while (key[index] != 0) {
-        hash = (hash * 33) + key_bytes[index];
-        index++;
-    }
-    i32 slot = hash & (map->cap - 1);
-    i32 *keys = map->keys;
-    T *values = map->values;
+export bool (HashMap<K, V> *map) put<K: Hash + Eq, V>(K key, V value) {
+    if (map->cap <= 0) { return false; }
+    i32 slot = (i32)(hash_key<K>(&key) & (u32)(map->cap - 1));
     i32 checked = 0;
     while (checked < map->cap) {
-        char *existing = (char *)keys[slot];
-        if (existing == (char *)0) {
-            keys[slot] = (i32)key;
-            values[slot] = value;
+        if (map->used[slot] != 0 && map->keys[slot] == key) {
+            map->values[slot] = value;
+            return true;
+        }
+        if (map->used[slot] == 0) {
+            map->used[slot] = 1;
+            map->keys[slot] = key;
+            map->values[slot] = value;
             map->len++;
             return true;
         }
-        bool equal = true;
-        index = 0;
-        while (existing[index] != 0 || key[index] != 0) {
-            if (existing[index] != key[index]) {
-                equal = false;
-                break;
-            }
-            index++;
-        }
-        if (equal) {
-            values[slot] = value;
-            return true;
-        }
         slot = slot + 1;
-        if (slot >= map->cap) {
-            slot = 0;
-        }
+        if (slot >= map->cap) { slot = 0; }
         checked++;
     }
     return false;
 }
 
 /** Look up a key and copy its value to out.
- * @param key NUL-terminated key to find.
- * @param out Destination for the value; unchanged when lookup fails.
  * @return True if found, false if absent or the map is disabled.
  */
-export bool (HashMap<T> *map) get(char *key, T *out) {
-    if (map->cap <= 0) {
-        return false;
-    }
-    i32 hash = 5381;
-    i32 index = 0;
-    u8 *key_bytes = (u8*)key;
-    while (key[index] != 0) {
-        hash = (hash * 33) + key_bytes[index];
-        index++;
-    }
-    i32 slot = hash & (map->cap - 1);
-    i32 *keys = map->keys;
-    T *values = map->values;
+export bool (HashMap<K, V> *map) get<K: Hash + Eq, V>(K *key, V *out) {
+    if (map->cap <= 0) { return false; }
+    i32 slot = (i32)(hash_key<K>(key) & (u32)(map->cap - 1));
     i32 checked = 0;
     while (checked < map->cap) {
-        char *existing = (char *)keys[slot];
-        if (existing == (char *)0) {
-            return false;
-        }
-        bool equal = true;
-        index = 0;
-        while (existing[index] != 0 || key[index] != 0) {
-            if (existing[index] != key[index]) {
-                equal = false;
-                break;
-            }
-            index++;
-        }
-        if (equal) {
-            *out = values[slot];
+        if (map->used[slot] == 0) { return false; }
+        if (map->keys[slot] == *key) {
+            *out = map->values[slot];
             return true;
         }
         slot = slot + 1;
-        if (slot >= map->cap) {
-            slot = 0;
-        }
+        if (slot >= map->cap) { slot = 0; }
         checked++;
     }
     return false;

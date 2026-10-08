@@ -2,6 +2,7 @@ package string;
 
 import allocator from "@std/memory/allocator.mln";
 import { Result } from "@std/core/result.mln";
+import { Drop } from "@std/core/drop.mln";
 
 /** Growable owned string allocated through the process-wide allocator.
  *
@@ -49,12 +50,14 @@ export String from_str(str value) {
     return result;
 }
 
-/** Releases this string's allocation. Called automatically for the owner. */
-export void (String *self) drop() {
-    allocator.free((i32)self->data);
-    self->data = (u8*)0;
-    self->length = 0;
-    self->capacity = 0;
+export impl Drop for String {
+    /** Releases this string's allocation. Called automatically for the owner. */
+    void (String *self) drop() {
+        allocator.free((i32)self->data);
+        self->data = (u8*)0;
+        self->length = 0;
+        self->capacity = 0;
+    }
 }
 
 /** Returns the current byte length. */

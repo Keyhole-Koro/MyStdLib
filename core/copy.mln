@@ -1,0 +1,4 @@
+/** Marker trait for values that may be duplicated by ordinary assignment or
+ * by-value calls. `impl Copy` has no methods; the compiler verifies that a
+ * struct has no Drop implementation and that all of its fields are Copy. */
+export trait Copy {}

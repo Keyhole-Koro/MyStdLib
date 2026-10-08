@@ -1,0 +1,9 @@
+import { Option } from "option.mln";
+
+/** A source of items, consumed one at a time.
+ * `for (T x in it) { ... }` calls `it.next()` until it returns None; a local
+ * iterator is advanced in place.
+ */
+export trait Iterator<T> {
+    Option<T> (Self *self) next();
+}
