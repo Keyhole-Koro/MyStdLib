@@ -1,3 +1,6 @@
+import { Option } from "@std/core/option.mln";
+import { Iterator } from "@std/core/iter.mln";
+
 /** Fixed-capacity FIFO over caller-owned storage.
  * One slot remains empty to distinguish full from empty; usable capacity is cap - 1.
  * @property data Pointer to caller-owned element storage.
@@ -124,4 +127,29 @@ export bool (RingBuffer<T> *r) peek(T *out) {
 export void (RingBuffer<T> *r) clear() {
     r->head = 0;
     r->tail = 0;
+}
+
+/** Pops queued elements oldest first: `for (char c in r.drain()) { ... }`
+ * empties the queue. Elements pushed while draining are drained too.
+ * @property ring The queue being drained.
+ */
+export struct RingDrain<T> {
+    RingBuffer<T> *ring;
+};
+
+export impl<T> Iterator<T> for RingDrain<T> {
+    Option<T> (Self *self) next() {
+        RingBuffer<T> *r = self->ring;
+        if (r->head == r->tail) { return None; }
+        T *data = r->data;
+        T item = data[r->head];
+        r->head = r->head + 1;
+        if (r->head >= r->cap) { r->head = 0; }
+        return Some(item);
+    }
+}
+
+/** An iterator that pops every queued element. */
+export RingDrain<T> (RingBuffer<T> *r) drain() {
+    return RingDrain<T> { ring: r };
 }

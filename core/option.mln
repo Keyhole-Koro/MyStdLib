@@ -7,3 +7,20 @@ export enum Option<T> {
     Some(T),
     None,
 }
+
+/** True when the option holds a value. */
+export bool (Option<T> *self) is_some() {
+    return case *self of { Some(_) -> true; None -> false; };
+}
+
+/** True when the option holds nothing. */
+export bool (Option<T> *self) is_none() {
+    return case *self of { Some(_) -> false; None -> true; };
+}
+
+/** The value, or `fallback` when there is none. Consumes the option.
+ * @param fallback Value returned for None.
+ */
+export T (Option<T> self) unwrap_or(T fallback) {
+    return case self of { Some(value) -> value; None -> fallback; };
+}

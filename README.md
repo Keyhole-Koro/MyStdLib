@@ -22,6 +22,25 @@ Core traits (see `docs/traits.md` in MyLangCompiler):
 | `Copy` | `core/copy.mln` | explicit copy semantics for safe structs |
 | `Iterator<T>` | `core/iter.mln` | `for (T x in it)` |
 | `Drop` | `core/drop.mln` | automatic cleanup (`String` implements it) |
+| `Describe` | `core/describe.mln` | `describe()`: a short message; the error contracts implement it |
+
+`Option` and `Result` methods: `is_some()` / `is_none()`, `is_ok()` /
+`is_err()` (borrowing), and `unwrap_or(fallback)`, `ok()`, `err()`
+(consuming). They work on a call result too: `ui.window_x(w).unwrap_or(0)`.
+
+Iterating the collections (`for` needs `Option` imported):
+
+| call | yields |
+| --- | --- |
+| `slice.iter()`, `vec.iter()` | `T *` for each element, front to back (`SliceIter<T>`) |
+| `ring.drain()` | each queued `T`, popping it (`RingDrain<T>`) |
+| `map.entries()` | `MapEntry<K, V>` (`key`, `value` pointers) for each stored pair |
+
+Lookups that can miss return the element's address as an Option:
+`vec.at(i)` and `slice.at(i)` (None out of range) and `map.get(&key)` (None
+when absent). Read with a default as `*v.at(i).unwrap_or(&fallback)`, or
+propagate with `?` in a function returning Option. The collections have no
+`[]`: nothing in the standard library panics.
 
 Debugging:
 

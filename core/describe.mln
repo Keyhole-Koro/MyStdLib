@@ -1,0 +1,8 @@
+/** A value that can explain itself to a person: a short, lowercase phrase
+ * such as "no such file or directory", without a trailing period, suitable
+ * after a prefix (`cat: no such file or directory`). The text is static. An
+ * error type implements this once so every place that reports it agrees.
+ */
+export trait Describe {
+    char *(Self *self) describe();
+}

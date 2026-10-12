@@ -1,3 +1,6 @@
+import { SliceIter } from "@std/memory/slice.mln";
+import { Option } from "@std/core/option.mln";
+
 /** Fixed-capacity vector over caller-owned storage.
  * @property data Pointer to caller-owned element storage.
  * @property len Number of initialized elements.
@@ -7,7 +10,7 @@
 //     Vec<i32> v;
 //     v.init(storage, 8);
 //     v.push(3);            // false when full
-//     i32 *p = v.at(0);     // 0 when out of range
+//     case v.at(0) of { Some(p) -> ...; None -> ...; }   // None when out of range
 export struct Vec<T> {
     T *data;
     i32 len;
@@ -61,11 +64,16 @@ export bool (Vec<T> *v) pop(T *out) {
 
 /** Find an element by zero-based index.
  * @param index Element index.
- * @return Pointer to the element, or null when index is out of range.
+ * @return The element's address, or None when index is out of range.
  */
-export T *(Vec<T> *v) at(i32 index) {
+export Option<T *> (Vec<T> *v) at(i32 index) {
     if (index < 0 || index >= v->len) {
-        return (T *)0;
+        return None;
     }
-    return v->data + index;
+    return Some(v->data + index);
+}
+
+/** An iterator over the stored elements, front to back, yielding pointers. */
+export SliceIter<T> (Vec<T> *v) iter() {
+    return SliceIter<T> { cursor: v->data, left: v->len };
 }

@@ -1,5 +1,7 @@
 import { Eq } from "@std/core/cmp.mln";
 import { Hash } from "@std/core/hash.mln";
+import { Option } from "@std/core/option.mln";
+import { Iterator } from "@std/core/iter.mln";
 
 /** Fixed-capacity open-addressed map over caller-owned storage.
  *
@@ -74,22 +76,54 @@ export bool (HashMap<K, V> *map) put<K: Hash + Eq, V>(K key, V value) {
     return false;
 }
 
-/** Look up a key and copy its value to out.
- * @return True if found, false if absent or the map is disabled.
+/** The value stored for `key`, as the address of its slot, or None when the
+ * key is absent: `*map.get(&k).unwrap_or(&fallback)`, or `?` in a function
+ * returning Option. Writing through the address updates the stored value.
  */
-export bool (HashMap<K, V> *map) get<K: Hash + Eq, V>(K *key, V *out) {
-    if (map->cap <= 0) { return false; }
+export Option<V *> (HashMap<K, V> *map) get<K: Hash + Eq, V>(K *key) {
+    if (map->cap <= 0) { return None; }
     i32 slot = (i32)(hash_key<K>(key) & (u32)(map->cap - 1));
     i32 checked = 0;
     while (checked < map->cap) {
-        if (map->used[slot] == 0) { return false; }
-        if (map->keys[slot] == *key) {
-            *out = map->values[slot];
-            return true;
-        }
+        if (map->used[slot] == 0) { return None; }
+        if (map->keys[slot] == *key) { return Some(map->values + slot); }
         slot = slot + 1;
         if (slot >= map->cap) { slot = 0; }
         checked++;
     }
-    return false;
+    return None;
+}
+
+/** One stored pair, borrowed from the map's storage. */
+export struct MapEntry<K, V> {
+    K *key;
+    V *value;
+};
+
+/** Walks the stored pairs in slot order:
+ *
+ *     for (MapEntry<i32, i32> e in map.entries()) { total = total + *e.value; }
+ */
+export struct MapEntries<K, V> {
+    HashMap<K, V> *map;
+    i32 slot;
+};
+
+export impl<K, V> Iterator<MapEntry<K, V>> for MapEntries<K, V> {
+    Option<MapEntry<K, V>> (Self *self) next() {
+        HashMap<K, V> *map = self->map;
+        while (self->slot < map->cap) {
+            i32 slot = self->slot;
+            self->slot = slot + 1;
+            if (map->used[slot] != 0) {
+                return Some(MapEntry<K, V> { key: map->keys + slot, value: map->values + slot });
+            }
+        }
+        return None;
+    }
+}
+
+/** An iterator over the stored key/value pairs. */
+export MapEntries<K, V> (HashMap<K, V> *map) entries() {
+    return MapEntries<K, V> { map: map, slot: 0 };
 }

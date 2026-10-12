@@ -3,6 +3,8 @@
  * @property Ok Contains the successful value.
  * @property Err Contains the error value.
  */
+import { Option } from "option.mln";
+
 export enum Result<T, E> {
     Ok(T),
     Err(E),
@@ -30,4 +32,31 @@ export bool result_take_err<T, E>(Result<T, E> *result, E *out) {
         Ok(v)  -> false;
         Err(e) -> ({ *out = e; true; });
     };
+}
+
+/** True for Ok. */
+export bool (Result<T, E> *self) is_ok() {
+    return case *self of { Ok(_) -> true; Err(_) -> false; };
+}
+
+/** True for Err. */
+export bool (Result<T, E> *self) is_err() {
+    return case *self of { Ok(_) -> false; Err(_) -> true; };
+}
+
+/** The Ok value, or `fallback` for an Err. Consumes the result.
+ * @param fallback Value returned for Err.
+ */
+export T (Result<T, E> self) unwrap_or(T fallback) {
+    return case self of { Ok(value) -> value; Err(_) -> fallback; };
+}
+
+/** The Ok value as an Option, dropping the error. Consumes the result. */
+export Option<T> (Result<T, E> self) ok() {
+    return case self of { Ok(value) -> Some(value); Err(_) -> None; };
+}
+
+/** The error as an Option. Consumes the result. */
+export Option<E> (Result<T, E> self) err() {
+    return case self of { Ok(_) -> None; Err(error) -> Some(error); };
 }
