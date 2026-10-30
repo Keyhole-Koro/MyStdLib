@@ -1,0 +1,44 @@
+package futex;
+
+import { Result } from "@std/core/result.mln";
+import { ThreadError } from "@contracts/process/thread.contract.mln";
+import { SyscallStatus, SyscallFailure } from "@contracts/myos/syscall.contract.mln";
+import { sys_futex_wait, sys_futex_wake } from "@std/platform/myos/syscall.masm";
+
+/**
+ * Converts a non-Ok syscall register envelope into a thread-domain error.
+ * @param status Positive transport status read from r1.
+ * @param payload Status-specific detail read from r2.
+ * @return Typed ThreadError produced through From<SyscallFailure>.
+ */
+ThreadError decode(SyscallStatus status, i32 payload) {
+    SyscallFailure failure = SyscallFailure { status: status, payload: payload };
+    return ThreadError::from(failure);
+}
+
+/**
+ * Waits while an aligned user word equals expected.
+ * @param address Readable/writable shared word used as the process-local futex key.
+ * @param expected Value that must still be present before sleeping.
+ * @param timeout_ticks Relative timeout; zero waits indefinitely.
+ * @return Ok(_) after wake, or WouldBlock, TimedOut, BadAddress, or lifecycle error.
+ */
+export Result<_, ThreadError> wait(i32 *address, i32 expected, i32 timeout_ticks) {
+    i32 value = 0;
+    SyscallStatus status = sys_futex_wait(address, expected, timeout_ticks, &value);
+    if (status != SyscallStatus::Ok) { return Err(decode(status, value)); }
+    return Ok(_);
+}
+
+/**
+ * Wakes at most count waiters for an address.
+ * @param address Readable/writable shared word used as the process-local futex key.
+ * @param count Maximum number of FIFO waiters to wake.
+ * @return Ok(number woken), or a typed address/lifecycle error.
+ */
+export Result<i32, ThreadError> wake(i32 *address, i32 count) {
+    i32 value = 0;
+    SyscallStatus status = sys_futex_wake(address, count, &value);
+    if (status != SyscallStatus::Ok) { return Err(decode(status, value)); }
+    return Ok(value);
+}

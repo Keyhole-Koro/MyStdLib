@@ -19,27 +19,39 @@ export struct Slice<T> {
  * @param data First element, or null for an empty range.
  * @param len Number of elements accessible through the slice.
  */
-export void (Slice<T> *s) init(T *data, i32 len) {
-    s->data = data;
-    s->len = len;
+export void (borrow mut Slice<T> s) init(T *data, i32 len) {
+    s.data = data;
+    s.len = len;
 }
 
 /** Return the number of elements in the range.
  * @return Element count.
  */
-export i32 (Slice<T> *s) len() {
-    return s->len;
+export i32 (borrow Slice<T> s) len() {
+    return s.len;
 }
 
-/** Find an element by zero-based index.
+/** Find an element by zero-based index. The slice stays borrowed while
+ * the result is in scope.
  * @param index Element index.
- * @return The element's address, or None when index is out of range.
+ * @return A borrow of the element, or None when index is out of range.
  */
-export Option<T *> (Slice<T> *s) at(i32 index) {
-    if (index < 0 || index >= s->len) {
+export Option<borrow T> (borrow Slice<T> s) at(i32 index) {
+    if (index < 0 || index >= s.len) {
         return None;
     }
-    return Some(s->data + index);
+    return Some(&s.data[index]);
+}
+
+/** Like at(), but the element can be written through the result.
+ * @param index Element index.
+ * @return A mutable borrow of the element, or None when out of range.
+ */
+export Option<borrow mut T> (borrow mut Slice<T> s) at_mut(i32 index) {
+    if (index < 0 || index >= s.len) {
+        return None;
+    }
+    return Some(&mut s.data[index]);
 }
 
 /** Walks contiguous elements front to back, yielding a pointer to each, so
@@ -66,6 +78,6 @@ export impl<T> Iterator<T *> for SliceIter<T> {
 }
 
 /** An iterator over the range's elements. */
-export SliceIter<T> (Slice<T> *s) iter() {
-    return SliceIter<T> { cursor: s->data, left: s->len };
+export SliceIter<T> (borrow Slice<T> s) iter() {
+    return SliceIter<T> { cursor: s.data, left: s.len };
 }

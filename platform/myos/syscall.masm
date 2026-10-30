@@ -1,16 +1,24 @@
 ; MyOS syscall bindings for hosted standard-library and SDK code.
-; The MyLang calling convention puts arguments in r5/r6/r7 and the result
-; in r1. Numbers must match contracts/myos/syscall.contract.mln.
+; The MyLang calling convention puts arguments in r5/r6/r7. A returning
+; syscall leaves SyscallStatus in r1 and its value/error payload in r2; these
+; stubs copy r2 through an explicit out pointer so MyLang can observe both.
 export os_call
 export sys_yield
 export sys_exit
 export sys_sbrk
 export sys_wait_notification
+export sys_thread_spawn
+export sys_thread_exit
+export sys_thread_join
+export sys_thread_self
+export sys_futex_wait
+export sys_futex_wake
 
-; i32 os_call(i32 service, i32 args)  -- Syscall::OS_CALL
+; SyscallStatus os_call(i32 service, i32 args, i32 *value_out)
 os_call:
   movi r1, 10
   syscall
+  store r7, r2
   mov pc, lr
 
 ; void sys_yield()  -- Syscall::YIELD
@@ -25,16 +33,61 @@ sys_exit:
   syscall
   mov pc, lr
 
-; i32 sys_sbrk(i32 increment)  -- Syscall::SBRK
+; SyscallStatus sys_sbrk(i32 increment, i32 *value_out)
 sys_sbrk:
   movi r1, 7
   syscall
+  store r6, r2
   mov pc, lr
 
-; void sys_wait_notification(i32 mask) -- Syscall::WAIT_NOTIFICATION
+; SyscallStatus sys_wait_notification(i32 mask, i32 *notification_out)
 ; The kernel either consumes an already-pending armed signal or blocks this
 ; task. The caller rechecks the queue after returning.
 sys_wait_notification:
   movi r1, 11
   syscall
+  store r6, r2
+  mov pc, lr
+
+; SyscallStatus sys_thread_spawn(ThreadSpawnArgs *args, i32 *value_out)
+sys_thread_spawn:
+  movi r1, 12
+  syscall
+  store r6, r2
+  mov pc, lr
+
+; void sys_thread_exit(i32 code)
+sys_thread_exit:
+  movi r1, 13
+  syscall
+  mov pc, lr
+
+; SyscallStatus sys_thread_join(i32 tid, i32 *value_out)
+sys_thread_join:
+  movi r1, 14
+  syscall
+  store r6, r2
+  mov pc, lr
+
+; SyscallStatus sys_thread_self(i32 *tid_out)
+sys_thread_self:
+  movi r1, 15
+  syscall
+  store r5, r2
+  mov pc, lr
+
+; SyscallStatus sys_futex_wait(i32 *addr, i32 expected, i32 timeout_ticks,
+;                              i32 *value_out)
+sys_futex_wait:
+  movi r1, 16
+  syscall
+  load r3, sp
+  store r3, r2
+  mov pc, lr
+
+; SyscallStatus sys_futex_wake(i32 *addr, i32 count, i32 *value_out)
+sys_futex_wake:
+  movi r1, 17
+  syscall
+  store r7, r2
   mov pc, lr

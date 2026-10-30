@@ -33,16 +33,16 @@ export u32 hash_key<K: Hash>(K *key) {
 }
 
 /** Initialize the map using caller-owned key, value, and occupancy arrays. */
-export void (HashMap<K, V> *map) init<K, V>(K *keys, V *values, u8 *used, i32 cap) {
-    map->keys = keys;
-    map->values = values;
-    map->used = used;
-    map->len = 0;
+export void (borrow mut HashMap<K, V> map) init<K, V>(K *keys, V *values, u8 *used, i32 cap) {
+    map.keys = keys;
+    map.values = values;
+    map.used = used;
+    map.len = 0;
     if (cap <= 0 || (cap & (cap - 1))) {
-        map->cap = 0;
+        map.cap = 0;
         return;
     }
-    map->cap = cap;
+    map.cap = cap;
     i32 i = 0;
     while (i < cap) {
         used[i] = 0;
@@ -53,45 +53,61 @@ export void (HashMap<K, V> *map) init<K, V>(K *keys, V *values, u8 *used, i32 ca
 /** Insert a key/value pair or replace the value for an existing key.
  * @return True on insertion or replacement, false if disabled or full.
  */
-export bool (HashMap<K, V> *map) put<K: Hash + Eq, V>(K key, V value) {
-    if (map->cap <= 0) { return false; }
-    i32 slot = (i32)(hash_key<K>(&key) & (u32)(map->cap - 1));
+export bool (borrow mut HashMap<K, V> map) put<K: Hash + Eq, V>(K key, V value) {
+    if (map.cap <= 0) { return false; }
+    i32 slot = (i32)(hash_key<K>(&key) & (u32)(map.cap - 1));
     i32 checked = 0;
-    while (checked < map->cap) {
-        if (map->used[slot] != 0 && map->keys[slot] == key) {
-            map->values[slot] = value;
+    while (checked < map.cap) {
+        if (map.used[slot] != 0 && map.keys[slot] == key) {
+            map.values[slot] = value;
             return true;
         }
-        if (map->used[slot] == 0) {
-            map->used[slot] = 1;
-            map->keys[slot] = key;
-            map->values[slot] = value;
-            map->len++;
+        if (map.used[slot] == 0) {
+            map.used[slot] = 1;
+            map.keys[slot] = key;
+            map.values[slot] = value;
+            map.len++;
             return true;
         }
         slot = slot + 1;
-        if (slot >= map->cap) { slot = 0; }
+        if (slot >= map.cap) { slot = 0; }
         checked++;
     }
     return false;
 }
 
-/** The value stored for `key`, as the address of its slot, or None when the
- * key is absent: `*map.get(&k).unwrap_or(&fallback)`, or `?` in a function
- * returning Option. Writing through the address updates the stored value.
+/** The value stored for `key`, or None when the key is absent:
+ * `*map.get(&k).unwrap_or(&fallback)`, or `?` in a function returning
+ * Option. The map stays borrowed while the result is in scope.
  */
-export Option<V *> (HashMap<K, V> *map) get<K: Hash + Eq, V>(K *key) {
-    if (map->cap <= 0) { return None; }
-    i32 slot = (i32)(hash_key<K>(key) & (u32)(map->cap - 1));
+export Option<borrow V> (borrow HashMap<K, V> map) get<K: Hash + Eq, V>(K *key) {
+    i32 slot = map.slot_of(key);
+    if (slot < 0) { return None; }
+    return Some(&map.values[slot]);
+}
+
+/** Like get(), but the stored value can be written through the result.
+ * The map stays mutably borrowed while the result is in scope.
+ */
+export Option<borrow mut V> (borrow mut HashMap<K, V> map) get_mut<K: Hash + Eq, V>(K *key) {
+    i32 slot = map.slot_of(key);
+    if (slot < 0) { return None; }
+    return Some(&mut map.values[slot]);
+}
+
+/** The slot holding `key`, or -1 when the key is absent. */
+export i32 (borrow HashMap<K, V> map) slot_of<K: Hash + Eq, V>(K *key) {
+    if (map.cap <= 0) { return -1; }
+    i32 slot = (i32)(hash_key<K>(key) & (u32)(map.cap - 1));
     i32 checked = 0;
-    while (checked < map->cap) {
-        if (map->used[slot] == 0) { return None; }
-        if (map->keys[slot] == *key) { return Some(map->values + slot); }
+    while (checked < map.cap) {
+        if (map.used[slot] == 0) { return -1; }
+        if (map.keys[slot] == *key) { return slot; }
         slot = slot + 1;
-        if (slot >= map->cap) { slot = 0; }
+        if (slot >= map.cap) { slot = 0; }
         checked++;
     }
-    return None;
+    return -1;
 }
 
 /** One stored pair, borrowed from the map's storage. */
@@ -124,6 +140,6 @@ export impl<K, V> Iterator<MapEntry<K, V>> for MapEntries<K, V> {
 }
 
 /** An iterator over the stored key/value pairs. */
-export MapEntries<K, V> (HashMap<K, V> *map) entries() {
+export MapEntries<K, V> (borrow HashMap<K, V> map) entries() {
     return MapEntries<K, V> { map: map, slot: 0 };
 }

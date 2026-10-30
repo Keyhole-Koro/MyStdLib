@@ -1,0 +1,104 @@
+package thread;
+
+import { Result } from "@std/core/result.mln";
+import { ThreadSpawnArgs, ThreadError } from "@contracts/process/thread.contract.mln";
+import { SyscallStatus, SyscallFailure } from "@contracts/myos/syscall.contract.mln";
+import {
+    sys_thread_spawn, sys_thread_exit, sys_thread_join,
+    sys_thread_self, sys_yield
+} from "@std/platform/myos/syscall.masm";
+
+/**
+ * Owned handle to a joinable kernel thread ID.
+ * @property tid Stable positive TID, or zero after a successful join consumes the handle.
+ */
+export struct Thread {
+    i32 tid;
+};
+
+/** Converts a non-Ok register envelope into the public thread error type. */
+ThreadError syscall_error(SyscallStatus status, i32 payload) {
+    SyscallFailure failure = SyscallFailure { status: status, payload: payload };
+    return ThreadError::from(failure);
+}
+
+/**
+ * Calls a worker entry and converts its return value into THREAD_EXIT.
+ * @param entry_address Function address originally supplied to spawn.
+ * @param arg Opaque worker argument.
+ */
+void thread_trampoline(i32 entry_address, i32 arg) {
+    fn(i32 value) -> i32 entry = (fn(i32 value) -> i32)entry_address;
+    i32 code = entry(arg);
+    sys_thread_exit(code);
+    while (1) { sys_yield(); }
+}
+
+/**
+ * Starts a joinable worker on the default 16 KiB user stack.
+ * @param entry Worker function invoked as entry(arg).
+ * @param arg Opaque integer passed to the worker.
+ * @return Ok(owned Thread handle), or a typed creation/validation error.
+ */
+export Result<Thread, ThreadError> spawn(fn(i32 value) -> i32 entry, i32 arg) {
+    return spawn_sized(entry, arg, 0);
+}
+
+/**
+ * Starts a joinable worker with a page-rounded user stack size.
+ * @param entry Worker function invoked as entry(arg).
+ * @param arg Opaque integer passed to the worker.
+ * @param stack_bytes Requested mapped stack bytes; zero selects the default.
+ * @return Ok(owned Thread handle), or a typed creation/validation error.
+ */
+export Result<Thread, ThreadError> spawn_sized(
+    fn(i32 value) -> i32 entry,
+    i32 arg,
+    i32 stack_bytes
+) {
+    ThreadSpawnArgs args = ThreadSpawnArgs {
+        entry: (i32)thread_trampoline,
+        arg0: (i32)entry,
+        arg1: arg,
+        stack_bytes: stack_bytes,
+    };
+    i32 value = 0;
+    SyscallStatus status = sys_thread_spawn((i32)(&args), &value);
+    if (status != SyscallStatus::Ok) { return Err(syscall_error(status, value)); }
+    Thread handle = Thread { tid: value };
+    return Ok(handle);
+}
+
+/**
+ * Waits for this worker once and consumes the handle on success.
+ * @return Ok(worker exit code), or a join/address error; successful join sets tid to zero.
+ */
+export Result<i32, ThreadError> (Thread *self) join() {
+    if (self->tid == 0) { return Err(ThreadError::AlreadyJoined(0)); }
+    i32 value = 0;
+    i32 target = self->tid;
+    SyscallStatus status = sys_thread_join(target, &value);
+    if (status != SyscallStatus::Ok) { return Err(syscall_error(status, value)); }
+    self->tid = 0;
+    return Ok(value);
+}
+
+/** @return Ok(stable positive caller TID), or a typed syscall failure. */
+export Result<i32, ThreadError> self() {
+    i32 value = 0;
+    SyscallStatus status = sys_thread_self(&value);
+    if (status != SyscallStatus::Ok) { return Err(syscall_error(status, value)); }
+    return Ok(value);
+}
+
+/**
+ * Terminates only the calling thread and never returns normally.
+ * @param code Exit code retained for a future join or last-thread process exit.
+ */
+export void exit(i32 code) {
+    sys_thread_exit(code);
+    while (1) { sys_yield(); }
+}
+
+/** Gives another runnable thread an opportunity to execute until the next tick. */
+export void yield_now() { sys_yield(); }

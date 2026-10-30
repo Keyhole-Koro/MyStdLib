@@ -1,0 +1,19 @@
+package myos_service;
+
+import { Result } from "@std/core/result.mln";
+import { SyscallStatus, SyscallFailure } from "@contracts/myos/syscall.contract.mln";
+import { os_call } from "syscall.masm";
+
+/**
+ * Invokes one MyOS service through the common two-register syscall envelope.
+ * @param service OsService wire value understood by the MyOS router.
+ * @param args User address or scalar argument defined by that service.
+ * @return Ok(service value from r2), or the transport failure status and payload.
+ */
+export Result<i32, SyscallFailure> call(i32 service, i32 args) {
+    i32 value = 0;
+    SyscallStatus status = os_call(service, args, &value);
+    if (status == SyscallStatus::Ok) { return Ok(value); }
+    SyscallFailure failure = SyscallFailure { status: status, payload: value };
+    return Err(failure);
+}

@@ -1,0 +1,55 @@
+package atomic;
+
+import {
+    atomic_load_word, atomic_store_word,
+    atomic_swap_word, atomic_compare_exchange_word
+} from "@std/platform/myos/atomic.masm";
+
+/**
+ * Atomically loads one aligned machine word.
+ * @param pointer Address of the shared word.
+ * @return Value observed at pointer.
+ */
+export i32 load(i32 *pointer) { return atomic_load_word(pointer); }
+
+/**
+ * Atomically stores one aligned machine word.
+ * @param pointer Address of the shared word.
+ * @param value Replacement value.
+ */
+export void store(i32 *pointer, i32 value) { atomic_store_word(pointer, value); }
+
+/**
+ * Atomically replaces a word.
+ * @param pointer Address of the shared word.
+ * @param value Unconditional replacement value.
+ * @return Value stored at pointer before the swap.
+ */
+export i32 swap(i32 *pointer, i32 value) {
+    return atomic_swap_word(pointer, value);
+}
+
+/**
+ * Replaces a word only when its current value equals expected.
+ * @param pointer Address of the shared word.
+ * @param expected Value required for the replacement to occur.
+ * @param replacement Value written on a successful comparison.
+ * @return Value observed before the conditional write.
+ */
+export i32 compare_exchange(i32 *pointer, i32 expected, i32 replacement) {
+    return atomic_compare_exchange_word(pointer, expected, replacement);
+}
+
+/**
+ * Adds delta through a compare-exchange retry loop.
+ * @param pointer Address of the shared word.
+ * @param delta Signed amount added with i32 arithmetic.
+ * @return Value observed immediately before the successful addition.
+ */
+export i32 fetch_add(i32 *pointer, i32 delta) {
+    while (1) {
+        i32 old = load(pointer);
+        if (compare_exchange(pointer, old, old + delta) == old) { return old; }
+    }
+    return 0;
+}

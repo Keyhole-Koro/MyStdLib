@@ -1,0 +1,41 @@
+package mutex;
+
+import atomic from "atomic.mln";
+import futex from "futex.mln";
+import { MutexState } from "@contracts/sync/futex.contract.mln";
+
+/**
+ * Three-state mutex backed by atomic exchange and futex wait/wake.
+ * @property state MutexState-compatible futex word; zero initialization is unlocked.
+ */
+export struct Mutex {
+    i32 state;
+};
+
+/** Resets a mutex to the unlocked state; callers must ensure it is not in use. */
+export void (Mutex *self) init() { atomic.store(&self->state, (i32)MutexState::Unlocked); }
+
+/** @return true when the caller acquired the mutex without blocking; otherwise false. */
+export bool (Mutex *self) try_lock() {
+    i32 old = atomic.compare_exchange(
+        &self->state, (i32)MutexState::Unlocked, (i32)MutexState::Locked
+    );
+    return old == (i32)MutexState::Unlocked;
+}
+
+/** Acquires the mutex, sleeping and retrying its futex word when contended. */
+export void (Mutex *self) lock() {
+    i32 old = atomic.swap(&self->state, (i32)MutexState::Locked);
+    if (old == (i32)MutexState::Unlocked) { return; }
+    while (1) {
+        old = atomic.swap(&self->state, (i32)MutexState::Contended);
+        if (old == (i32)MutexState::Unlocked) { return; }
+        futex.wait(&self->state, (i32)MutexState::Contended, 0);
+    }
+}
+
+/** Releases a mutex and wakes one possible waiter when the old state was Contended. */
+export void (Mutex *self) unlock() {
+    i32 old = atomic.swap(&self->state, (i32)MutexState::Unlocked);
+    if (old == (i32)MutexState::Contended) { futex.wake(&self->state, 1); }
+}

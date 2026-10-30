@@ -21,30 +21,30 @@ export struct Vec<T> {
  * @param storage Storage for at least cap elements.
  * @param cap Number of available elements in storage.
  */
-export void (Vec<T> *v) init(T *storage, i32 cap) {
-    v->data = storage;
-    v->len = 0;
-    v->cap = cap;
+export void (borrow mut Vec<T> v) init(T *storage, i32 cap) {
+    v.data = storage;
+    v.len = 0;
+    v.cap = cap;
 }
 
 /** Return the number of elements currently stored.
  * @return Current element count.
  */
-export i32 (Vec<T> *v) len() {
-    return v->len;
+export i32 (borrow Vec<T> v) len() {
+    return v.len;
 }
 
 /** Append value to the end of the vector.
  * @param value Element to append.
  * @return True if appended, false if the vector is full.
  */
-export bool (Vec<T> *v) push(T value) {
-    if (v->len >= v->cap) {
+export bool (borrow mut Vec<T> v) push(T value) {
+    if (v.len >= v.cap) {
         return false;
     }
-    T *data = v->data;
-    data[v->len] = value;
-    v->len++;
+    T *data = v.data;
+    data[v.len] = value;
+    v.len++;
     return true;
 }
 
@@ -52,28 +52,41 @@ export bool (Vec<T> *v) push(T value) {
  * @param out Destination for the removed element; unchanged when empty.
  * @return True if an element was removed, false if empty.
  */
-export bool (Vec<T> *v) pop(T *out) {
-    if (v->len == 0) {
+export bool (borrow mut Vec<T> v) pop(T *out) {
+    if (v.len == 0) {
         return false;
     }
-    v->len--;
-    T *data = v->data;
-    *out = data[v->len];
+    v.len--;
+    T *data = v.data;
+    *out = data[v.len];
     return true;
 }
 
-/** Find an element by zero-based index.
+/** Find an element by zero-based index. The vector stays borrowed while
+ * the result is in scope.
  * @param index Element index.
- * @return The element's address, or None when index is out of range.
+ * @return A borrow of the element, or None when index is out of range.
  */
-export Option<T *> (Vec<T> *v) at(i32 index) {
-    if (index < 0 || index >= v->len) {
+export Option<borrow T> (borrow Vec<T> v) at(i32 index) {
+    if (index < 0 || index >= v.len) {
         return None;
     }
-    return Some(v->data + index);
+    return Some(&v.data[index]);
+}
+
+/** Like at(), but the element can be written through the result. The
+ * vector stays mutably borrowed while the result is in scope.
+ * @param index Element index.
+ * @return A mutable borrow of the element, or None when out of range.
+ */
+export Option<borrow mut T> (borrow mut Vec<T> v) at_mut(i32 index) {
+    if (index < 0 || index >= v.len) {
+        return None;
+    }
+    return Some(&mut v.data[index]);
 }
 
 /** An iterator over the stored elements, front to back, yielding pointers. */
-export SliceIter<T> (Vec<T> *v) iter() {
-    return SliceIter<T> { cursor: v->data, left: v->len };
+export SliceIter<T> (borrow Vec<T> v) iter() {
+    return SliceIter<T> { cursor: v.data, left: v.len };
 }

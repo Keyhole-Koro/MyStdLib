@@ -3,7 +3,7 @@ package process;
 // Generic process control for hosted MyLang programs. UI-specific stdout
 // binding remains in MyAppFramework's terminal integration.
 
-import { os_call } from "@std/platform/myos/syscall.masm";
+import myos_service from "@std/platform/myos/service.mln";
 import { OsService } from "@contracts/myos/services.contract.mln";
 import { Result } from "@std/core/result.mln";
 import { SpawnError } from "@contracts/process/spawn.contract.mln";
@@ -19,7 +19,7 @@ export Result<i32, SpawnError> spawn(char *path) {
     ProcSpawnArgs<Result<i32, SpawnError>> args = ProcSpawnArgs<Result<i32, SpawnError>> {
         path: path, stdout_node: 0, result_out: &result
     };
-    os_call(OsService::PROC_SPAWN, (i32)(&args));
+    myos_service.call(OsService::PROC_SPAWN, (i32)(&args));
     return result;
 }
 
@@ -32,7 +32,7 @@ export Result<bool, ProcessControlError> has_exited(i32 pid) {
     ProcExitedArgs<Result<bool, ProcessControlError>> args = ProcExitedArgs<Result<bool, ProcessControlError>> {
         pid: pid, result_out: &result
     };
-    os_call(OsService::PROC_EXITED, (i32)(&args));
+    myos_service.call(OsService::PROC_EXITED, (i32)(&args));
     return result;
 }
 
@@ -45,7 +45,7 @@ export Result<ProcessExitStatus, ProcessControlError> reap(i32 pid) {
     ProcReapArgs<Result<ProcessExitStatus, ProcessControlError>> args = ProcReapArgs<Result<ProcessExitStatus, ProcessControlError>> {
         pid: pid, result_out: &result
     };
-    os_call(OsService::PROC_REAP, (i32)(&args));
+    myos_service.call(OsService::PROC_REAP, (i32)(&args));
     return result;
 }
 
@@ -55,5 +55,5 @@ export Result<ProcessExitStatus, ProcessControlError> reap(i32 pid) {
  */
 export void feed_line(i32 pid, char *line) {
     ProcFeedArgs args = ProcFeedArgs { pid: pid, line: line };
-    os_call(OsService::PROC_FEED, (i32)(&args));
+    myos_service.call(OsService::PROC_FEED, (i32)(&args));
 }

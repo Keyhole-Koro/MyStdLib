@@ -175,14 +175,14 @@ export i32 count() {
  */
 export bool (Annotations *it) next() {
     while (it->index < it->rows.len()) {
-        Option<AnnotationRow *> found = it->rows.at(it->index);
-        AnnotationRow *r = case found of {
+        Option<borrow AnnotationRow> found = it->rows.at(it->index);
+        borrow AnnotationRow r = case found of {
             Some(row) -> row;
             None -> ({ break; });
         };
         it->index++;
-        if (it->want_name != 0 && !str.eq(string_of(it, r->name), it->want_name)) { continue; }
-        if (it->want_type != 0 && !str.eq(string_of(it, r->type), it->want_type)) { continue; }
+        if (it->want_name != 0 && !str.eq(string_of(it, r.name), it->want_name)) { continue; }
+        if (it->want_type != 0 && !str.eq(string_of(it, r.type), it->want_type)) { continue; }
         it->cur = r;
         return true;
     }

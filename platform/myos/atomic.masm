@@ -1,0 +1,28 @@
+; Single-instruction atomic operations. Arguments follow the MyLang ABI:
+; pointer in r5, then value(s) in r6/r7, result in r1.
+export atomic_load_word
+export atomic_store_word
+export atomic_swap_word
+export atomic_compare_exchange_word
+
+; Atomically loads the aligned word at pointer r5 into r1.
+atomic_load_word:
+  load r1, r5
+  mov pc, lr
+
+; Atomically stores value r6 to the aligned word at pointer r5.
+atomic_store_word:
+  store r5, r6
+  mov pc, lr
+
+; Atomically swaps value r6 with *r5 and returns the previous word in r1.
+atomic_swap_word:
+  swp r6, r5
+  mov r1, r6
+  mov pc, lr
+
+; Replaces *r5 with r7 when it equals r6 and returns the previous word in r1.
+atomic_compare_exchange_word:
+  cas r6, r7, r5
+  mov r1, r6
+  mov pc, lr
