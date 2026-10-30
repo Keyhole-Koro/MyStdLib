@@ -2,7 +2,7 @@
 
 Shared MyLang standard library: generic containers (`Vec`, `Slice`, `Arena`,
 `RingBuffer`, `IntrusiveList`, `HashMap`, `Option`, `Result`) plus string,
-byte, bit-array, and assertion helpers (`str`, `InlineString<N>`, `bytes`,
+byte, bit-array, and assertion helpers (`str`, `Text<N>`, `bytes`,
 `bitset`, `assert`), and the readers of what the toolchain leaves in the image:
 `memory/section.mln` (a linker-collected section by name, as a `Slice<T>`),
 `format/mbin.mln` (an MBIN executable image in a buffer: header fields, the
@@ -97,16 +97,16 @@ the empty zero value, so no separate initialization call is needed.
 
 ```mln
 import str from "text/str.mln";
-import { InlineString } from "text/inline_string.mln";
+import { Text } from "text/text.mln";
 
-InlineString<128> line = InlineString<128> {};
+Text<128> line = Text<128> {};
 line.append("pid=");
-InlineString<12> number = 42.to_string();
+Text<12> number = 42.to_string();
 line.append(number.as_str());
 ```
 
 `str` is only a borrowed view; it is not writable storage. Use
-`InlineString<N>` for bounded local/field ownership and, once allocation is
+`Text<N>` for bounded local/field ownership and, once allocation is
 needed, the heap-owned `String` API. NUL-terminated pointers belong at explicit
 foreign-system boundaries rather than in ordinary text code.
 
@@ -122,13 +122,13 @@ import { String } from "text/string.mln";
 
 String line = string.with_capacity(128);
 line.append("pid=");
-InlineString<12> pid = 42.to_string();
+Text<12> pid = 42.to_string();
 line.append(pid.as_str());
 ```
 
 `reserve`, `append`, and `push` return false on allocation failure and leave
 the existing text intact. `String` is length-aware and does not reserve a NUL
-terminator; use `InlineCString<N>` at a `char *` boundary.
+terminator; use `Text<N>`'s `as_ptr()` at a `char *` boundary.
 
 `testing/assert.mln` provides generic `assert_eq<T>` / `assert_ne<T>` plus condition,
 string, byte-range, pointer, and `Result` assertions. Programs that import it

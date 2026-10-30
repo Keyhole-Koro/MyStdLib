@@ -2,7 +2,7 @@ package str;
 
 import { Option } from "@std/core/option.mln";
 import { Result } from "@std/core/result.mln";
-import { InlineString } from "inline_string.mln";
+import { Text } from "text.mln";
 import ascii from "ascii.mln";
 import int32 from "@std/core/int32.mln";
 
@@ -357,8 +357,8 @@ export i32 itoa(i32 value, char* buf) {
 /** Convert an integer into an owned, inline decimal string.
  * @return Decimal representation with no allocation.
  */
-export InlineString<12> (i32 self) to_string() {
-    InlineString<12> result = InlineString<12> {};
+export Text<12> (i32 self) to_string() {
+    Text<12> result = Text<12> {};
     if (self == 0) {
         result.push((u8)'0');
     } else if (self == int32.MIN) {
