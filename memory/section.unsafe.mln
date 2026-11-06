@@ -44,12 +44,8 @@ export bool exists(str name) {
     };
 }
 
-/** Get the address of a collected section.
- * @param name Section name.
- * @return Address of the first byte, or None when the section is absent.
- */
-@safe
-export Option<i32> start(str name) {
+// Address of a collected section's first byte, or None when it is absent.
+Option<i32> start(str name) {
     i32 i = case find(name) of {
         Some(v) -> v;
         None -> ({ return None; });
@@ -57,12 +53,8 @@ export Option<i32> start(str name) {
     return Some(__sections[i * 3 + 1]);
 }
 
-/** Get the total byte size of a collected section.
- * @param name Section name.
- * @return Combined size in bytes, or None when the section is absent.
- */
-@safe
-export Option<i32> size(str name) {
+// Combined size of a collected section in bytes, or None when it is absent.
+Option<i32> size(str name) {
     i32 i = case find(name) of {
         Some(v) -> v;
         None -> ({ return None; });

@@ -10,7 +10,7 @@ import { Result } from "@std/core/result.mln";
 extern void assert_fail(char* message);
 
 // The hook reads to a NUL, which a view need not have.
-export void assert_failed(str message) {
+void assert_failed(str message) {
     Text<128> text = Text<128> {};
     i32 i = 0;
     while (i < message.length && text.push((u8)message.byte(i))) { i++; }
