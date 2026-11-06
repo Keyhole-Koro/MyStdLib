@@ -1,55 +1,82 @@
 package atomic;
 
 import {
-    atomic_load_word, atomic_store_word,
-    atomic_swap_word, atomic_compare_exchange_word
+    atomic_load_word,
+    atomic_store_word,
+    atomic_swap_word,
+    atomic_compare_exchange_word
 } from "@std/platform/myos/atomic.masm";
+import futex from "futex.mln";
+import { Result } from "@std/core/result.mln";
+import { ThreadError } from "@contracts/process/thread.contract.mln";
 
 /**
- * Atomically loads one aligned machine word.
- * @param pointer Address of the shared word.
- * @return Value observed at pointer.
+ * A word that threads share. T is anything one word wide: an integer, an enum
+ * or a newtype. The CPU's atomic instructions and the futex act on the word's
+ * address, so the word stays here and users only see T. Zero is a valid start.
+ * @property word The shared word.
  */
-export i32 load(i32 *pointer) { return atomic_load_word(pointer); }
+export struct Atomic<T> {
+    i32 word;
+};
+
+/** @return The current value. */
+@safe
+export T (borrow Atomic<T> self) load() { return (T)atomic_load_word(&self.word); }
+
+/** Replaces the value. */
+@safe
+export void (borrow Atomic<T> self) store(T value) { atomic_store_word(&self.word, (i32)value); }
 
 /**
- * Atomically stores one aligned machine word.
- * @param pointer Address of the shared word.
- * @param value Replacement value.
+ * Replaces the value in one step.
+ * @return The previous value.
  */
-export void store(i32 *pointer, i32 value) { atomic_store_word(pointer, value); }
-
-/**
- * Atomically replaces a word.
- * @param pointer Address of the shared word.
- * @param value Unconditional replacement value.
- * @return Value stored at pointer before the swap.
- */
-export i32 swap(i32 *pointer, i32 value) {
-    return atomic_swap_word(pointer, value);
+@safe
+export T (borrow Atomic<T> self) swap(T value) {
+    return (T)atomic_swap_word(&self.word, (i32)value);
 }
 
 /**
- * Replaces a word only when its current value equals expected.
- * @param pointer Address of the shared word.
- * @param expected Value required for the replacement to occur.
- * @param replacement Value written on a successful comparison.
- * @return Value observed before the conditional write.
+ * Replaces the value if it still equals `expected`.
+ * @return The previous value, which equals `expected` when the swap happened.
  */
-export i32 compare_exchange(i32 *pointer, i32 expected, i32 replacement) {
-    return atomic_compare_exchange_word(pointer, expected, replacement);
+@safe
+export T (borrow Atomic<T> self) compare_exchange(T expected, T replacement) {
+    return (T)atomic_compare_exchange_word(&self.word, (i32)expected, (i32)replacement);
 }
 
 /**
- * Adds delta through a compare-exchange retry loop.
- * @param pointer Address of the shared word.
- * @param delta Signed amount added with i32 arithmetic.
- * @return Value observed immediately before the successful addition.
+ * Adds to an integer value in one step.
+ * @return The previous value.
  */
-export i32 fetch_add(i32 *pointer, i32 delta) {
+@safe
+export T (borrow Atomic<T> self) fetch_add(i32 delta) {
     while (1) {
-        i32 old = load(pointer);
-        if (compare_exchange(pointer, old, old + delta) == old) { return old; }
+        i32 observed = atomic_load_word(&self.word);
+        if (atomic_compare_exchange_word(&self.word, observed, observed + delta) == observed) {
+            return (T)observed;
+        }
     }
-    return 0;
+}
+
+/**
+ * Sleeps while the value equals `expected`.
+ * @param expected Value that must still be present before sleeping.
+ * @param timeout_ticks Relative timeout; zero waits indefinitely.
+ * @return Ok(_) after a wake, or WouldBlock, TimedOut, BadAddress or a lifecycle error.
+ */
+@safe
+export Result<_, ThreadError> (borrow Atomic<T> self) wait(T expected, i32 timeout_ticks) {
+    return futex.wait(&self.word, (i32)expected, timeout_ticks);
+}
+
+/**
+ * Wakes threads sleeping on this word.
+ * @param count Most threads to wake.
+ * @return The number woken.
+ */
+@safe
+export Result<i32, ThreadError> (borrow Atomic<T> self) wake(i32 count) {
+    return futex.wake(&self.word, count);
 }
