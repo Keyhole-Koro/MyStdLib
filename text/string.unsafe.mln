@@ -24,6 +24,7 @@ export struct String {
  * @param capacity Initial byte capacity; negative values behave as zero.
  * @return Owned string. Its capacity is zero if allocation failed.
  */
+@safe
 export String with_capacity(i32 capacity) {
     String result = String {};
     if (capacity > 0) {
@@ -42,6 +43,7 @@ export String with_capacity(i32 capacity) {
 /** Creates an owned copy of a borrowed string.
  * @return Empty zero-capacity String when allocation fails.
  */
+@safe
 export String from_str(str value) {
     String result = with_capacity(value.length);
     if (value.length == 0 || result.capacity != 0) {
@@ -50,43 +52,50 @@ export String from_str(str value) {
     return result;
 }
 
+@safe
 export impl Drop for String {
     /** Releases this string's allocation. Called automatically for the owner. */
-    void (String *self) drop() {
-        allocator.free((i32)self->data);
-        self->data = (u8*)0;
-        self->length = 0;
-        self->capacity = 0;
+    void (borrow mut String self) drop() {
+        allocator.free((i32)self.data);
+        self.data = (u8*)0;
+        self.length = 0;
+        self.capacity = 0;
     }
 }
 
 /** Returns the current byte length. */
-export i32 (String *self) len() { return self->length; }
+@safe
+export i32 (borrow String self) len() { return self.length; }
 
 /** Returns the allocated byte capacity. */
-export i32 (String *self) capacity_bytes() { return self->capacity; }
+@safe
+export i32 (borrow String self) capacity_bytes() { return self.capacity; }
 
 /** Tests whether no text bytes are present. */
-export bool (String *self) is_empty() { return self->length == 0; }
+@safe
+export bool (borrow String self) is_empty() { return self.length == 0; }
 
 /** Borrows the initialized bytes as str. */
-export str (String *self) as_str() {
-    return str { data: (char*)self->data, length: self->length };
+@safe
+export str (borrow String self) as_str() {
+    return str { data: (char*)self.data, length: self.length };
 }
 
 /** Removes the contents while retaining the allocation. */
-export void (String *self) clear() { self->length = 0; }
+@safe
+export void (borrow mut String self) clear() { self.length = 0; }
 
 /** Ensures room for additional more bytes without changing the contents.
  * @return True on success; false leaves self unchanged.
  */
-export bool (String *self) reserve(i32 additional) {
+@safe
+export bool (borrow mut String self) reserve(i32 additional) {
     if (additional < 0) { return false; }
-    i32 required = self->length + additional;
-    if (required < self->length) { return false; }
-    if (required <= self->capacity) { return true; }
+    i32 required = self.length + additional;
+    if (required < self.length) { return false; }
+    if (required <= self.capacity) { return true; }
 
-    i32 next = self->capacity;
+    i32 next = self.capacity;
     if (next < 4) { next = 4; }
     while (next < required) {
         i32 grown = next + next;
@@ -100,43 +109,45 @@ export bool (String *self) reserve(i32 additional) {
     };
     u8 *replacement = (u8*)pointer;
     i32 i = 0;
-    while (i < self->length) {
-        replacement[i] = self->data[i];
+    while (i < self.length) {
+        replacement[i] = self.data[i];
         i++;
     }
-    allocator.free((i32)self->data);
-    self->data = replacement;
-    self->capacity = next;
+    allocator.free((i32)self.data);
+    self.data = replacement;
+    self.capacity = next;
     return true;
 }
 
 /** Appends all bytes from value atomically.
  * @return True on success; false leaves the text unchanged.
  */
-export bool (String *self) append(str value) {
+@safe
+export bool (borrow mut String self) append(str value) {
     i32 source_offset = -1;
     i32 source_address = (i32)value.data;
-    i32 allocation_start = (i32)self->data;
+    i32 allocation_start = (i32)self.data;
     if (allocation_start != 0 && source_address >= allocation_start &&
-        source_address + value.length <= allocation_start + self->length) {
+        source_address + value.length <= allocation_start + self.length) {
         source_offset = source_address - allocation_start;
     }
     if (!self.reserve(value.length)) { return false; }
     char *source = value.data;
-    if (source_offset >= 0) { source = (char*)(self->data + source_offset); }
+    if (source_offset >= 0) { source = (char*)(self.data + source_offset); }
     i32 i = 0;
     while (i < value.length) {
-        self->data[self->length + i] = (u8)source[i];
+        self.data[self.length + i] = (u8)source[i];
         i++;
     }
-    self->length = self->length + value.length;
+    self.length = self.length + value.length;
     return true;
 }
 
 /** Appends one byte, growing as necessary. */
-export bool (String *self) push(u8 value) {
+@safe
+export bool (borrow mut String self) push(u8 value) {
     if (!self.reserve(1)) { return false; }
-    self->data[self->length] = value;
-    self->length++;
+    self.data[self.length] = value;
+    self.length++;
     return true;
 }

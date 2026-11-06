@@ -30,6 +30,7 @@ export void (borrow mut Vec<T> v) init(T *storage, i32 cap) {
 /** Return the number of elements currently stored.
  * @return Current element count.
  */
+@safe
 export i32 (borrow Vec<T> v) len() {
     return v.len;
 }
@@ -38,6 +39,7 @@ export i32 (borrow Vec<T> v) len() {
  * @param value Element to append.
  * @return True if appended, false if the vector is full.
  */
+@safe
 export bool (borrow mut Vec<T> v) push(T value) {
     if (v.len >= v.cap) {
         return false;
@@ -67,6 +69,7 @@ export bool (borrow mut Vec<T> v) pop(T *out) {
  * @param index Element index.
  * @return A borrow of the element, or None when index is out of range.
  */
+@safe
 export Option<borrow T> (borrow Vec<T> v) at(i32 index) {
     if (index < 0 || index >= v.len) {
         return None;
@@ -79,6 +82,7 @@ export Option<borrow T> (borrow Vec<T> v) at(i32 index) {
  * @param index Element index.
  * @return A mutable borrow of the element, or None when out of range.
  */
+@safe
 export Option<borrow mut T> (borrow mut Vec<T> v) at_mut(i32 index) {
     if (index < 0 || index >= v.len) {
         return None;
@@ -87,6 +91,7 @@ export Option<borrow mut T> (borrow mut Vec<T> v) at_mut(i32 index) {
 }
 
 /** An iterator over the stored elements, front to back, yielding pointers. */
+@safe
 export SliceIter<T> (borrow Vec<T> v) iter() {
     return SliceIter<T> { cursor: v.data, left: v.len };
 }

@@ -10,37 +10,13 @@ export enum Result<T, E> {
     Err(E),
 }
 
-/** Copy the Ok payload to out when successful.
- * @param result Result value to inspect.
- * @param out Destination for the Ok payload; unchanged for Err.
- * @return True for Ok, false for Err.
- */
-export bool result_take_ok<T, E>(Result<T, E> *result, T *out) {
-    return case *result of {
-        Ok(v)  -> ({ *out = v; true; });
-        Err(e) -> false;
-    };
-}
-
-/** Copy the Err payload to out when the result is an error.
- * @param result Result value to inspect.
- * @param out Destination for the Err payload; unchanged for Ok.
- * @return True for Err, false for Ok.
- */
-export bool result_take_err<T, E>(Result<T, E> *result, E *out) {
-    return case *result of {
-        Ok(v)  -> false;
-        Err(e) -> ({ *out = e; true; });
-    };
-}
-
 /** True for Ok. */
-export bool (Result<T, E> *self) is_ok() {
+export bool (borrow Result<T, E> self) is_ok() {
     return case *self of { Ok(_) -> true; Err(_) -> false; };
 }
 
 /** True for Err. */
-export bool (Result<T, E> *self) is_err() {
+export bool (borrow Result<T, E> self) is_err() {
     return case *self of { Ok(_) -> false; Err(_) -> true; };
 }
 

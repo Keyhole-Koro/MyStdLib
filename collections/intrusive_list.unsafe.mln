@@ -14,32 +14,32 @@ export struct IntrusiveList<T> {
 
 /** Initialize an empty list.
  */
-export void (IntrusiveList<T> *list) init() {
-    list->head = (T *)0;
-    list->len = 0;
+export void (borrow mut IntrusiveList<T> list) init() {
+    list.head = (T *)0;
+    list.len = 0;
 }
 
 /** Insert node at the front of the list.
  * @param node Node to insert.
  * @param node_next Address of node's next-link field.
  */
-export void (IntrusiveList<T> *list) push_front(T *node, T **node_next) {
-    *node_next = list->head;
-    list->head = node;
-    list->len = list->len + 1;
+export void (borrow mut IntrusiveList<T> list) push_front(T *node, T **node_next) {
+    *node_next = list.head;
+    list.head = node;
+    list.len = list.len + 1;
 }
 
 /** Remove and return the first node.
  * @param head_next Address of the current head node's next-link field.
  * @return Removed node, or null when the list is empty.
  */
-export T *(IntrusiveList<T> *list) pop_front(T **head_next) {
-    T *node = list->head;
+export T *(borrow mut IntrusiveList<T> list) pop_front(T **head_next) {
+    T *node = list.head;
     if (node == 0) {
         return (T *)0;
     }
-    list->head = *head_next;
+    list.head = *head_next;
     *head_next = (T *)0;
-    list->len = list->len - 1;
+    list.len = list.len - 1;
     return node;
 }

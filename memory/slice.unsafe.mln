@@ -27,6 +27,7 @@ export void (borrow mut Slice<T> s) init(T *data, i32 len) {
 /** Return the number of elements in the range.
  * @return Element count.
  */
+@safe
 export i32 (borrow Slice<T> s) len() {
     return s.len;
 }
@@ -36,6 +37,7 @@ export i32 (borrow Slice<T> s) len() {
  * @param index Element index.
  * @return A borrow of the element, or None when index is out of range.
  */
+@safe
 export Option<borrow T> (borrow Slice<T> s) at(i32 index) {
     if (index < 0 || index >= s.len) {
         return None;
@@ -47,6 +49,7 @@ export Option<borrow T> (borrow Slice<T> s) at(i32 index) {
  * @param index Element index.
  * @return A mutable borrow of the element, or None when out of range.
  */
+@safe
 export Option<borrow mut T> (borrow mut Slice<T> s) at_mut(i32 index) {
     if (index < 0 || index >= s.len) {
         return None;
@@ -67,17 +70,19 @@ export struct SliceIter<T> {
     i32 left;
 };
 
+@safe
 export impl<T> Iterator<T *> for SliceIter<T> {
-    Option<T *> (Self *self) next() {
-        if (self->left <= 0) { return None; }
-        T *item = self->cursor;
-        self->cursor = self->cursor + 1;
-        self->left = self->left - 1;
+    Option<T *> (borrow mut Self self) next() {
+        if (self.left <= 0) { return None; }
+        T *item = self.cursor;
+        self.cursor = self.cursor + 1;
+        self.left = self.left - 1;
         return Some(item);
     }
 }
 
 /** An iterator over the range's elements. */
+@safe
 export SliceIter<T> (borrow Slice<T> s) iter() {
     return SliceIter<T> { cursor: s.data, left: s.len };
 }

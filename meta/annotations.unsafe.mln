@@ -121,11 +121,11 @@ export Annotations in_image(char *image) {
  * @param name Annotation name, or null to accept any name.
  * @param type Receiver type, or null to accept any type.
  */
-export void (Annotations *it) on(char *name, char *type) {
-    it->want_name = name;
-    it->want_type = type;
-    it->index = 0;
-    it->cur = (AnnotationRow*)0;
+export void (borrow mut Annotations it) on(char *name, char *type) {
+    it.want_name = name;
+    it.want_type = type;
+    it.index = 0;
+    it.cur = (AnnotationRow*)0;
 }
 
 // A string the row points at, as a pointer this program can read.
@@ -141,6 +141,7 @@ char *string_of(Annotations *it, char *s) {
 /** Iterate over every annotation in the linked table.
  * @return New unfiltered iterator.
  */
+@safe
 export Annotations all() { return make((char*)0, (char*)0); }
 
 /** Iterate over rows with a given annotation name.
@@ -165,6 +166,7 @@ export Annotations where(char *name, char *type) { return make(name, type); }
 /** Count rows in the running program's linked annotation table.
  * @return Total row count.
  */
+@safe
 export i32 count() {
     Slice<AnnotationRow> rows = as_slice<AnnotationRow>("annotations");
     return rows.len();
@@ -173,92 +175,99 @@ export i32 count() {
 /** Advance to the next matching row.
  * @return True when a matching row was found, false at end.
  */
-export bool (Annotations *it) next() {
-    while (it->index < it->rows.len()) {
-        Option<borrow AnnotationRow> found = it->rows.at(it->index);
+@safe
+export bool (borrow mut Annotations it) next() {
+    Slice<AnnotationRow> rows = it.rows;
+    while (it.index < rows.len()) {
+        Option<borrow AnnotationRow> found = rows.at(it.index);
         borrow AnnotationRow r = case found of {
             Some(row) -> row;
             None -> ({ break; });
         };
-        it->index++;
-        if (it->want_name != 0 && !str.eq(string_of(it, r.name), it->want_name)) { continue; }
-        if (it->want_type != 0 && !str.eq(string_of(it, r.type), it->want_type)) { continue; }
-        it->cur = r;
+        it.index++;
+        if (it.want_name != 0 && !str.eq(string_of(it, r.name), it.want_name)) { continue; }
+        if (it.want_type != 0 && !str.eq(string_of(it, r.type), it.want_type)) { continue; }
+        it.cur = r;
         return true;
     }
-    it->cur = (AnnotationRow*)0;
+    it.cur = (AnnotationRow*)0;
     return false;
 }
 
 /** Reset iteration to before the first row.
  */
-export void (Annotations *it) reset() {
-    it->index = 0;
-    it->cur = (AnnotationRow*)0;
+@safe
+export void (borrow mut Annotations it) reset() {
+    it.index = 0;
+    it.cur = (AnnotationRow*)0;
 }
 
 /** Get the current row.
  * @return Some(current row), or None when there is no current match.
  */
-export Option<AnnotationRow*> (Annotations *it) row() {
-    if (it->cur == 0) { return None; }
-    return Some(it->cur);
+export Option<AnnotationRow*> (borrow Annotations it) row() {
+    if (it.cur == 0) { return None; }
+    return Some(it.cur);
 }
 
 /** Get the current annotation name.
  * @return Ok(annotation name), or Err(NoCurrentRow) when there is no current row.
  */
-export Result<char*, AnnotationError> (Annotations *it) name() {
-    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    return Ok(string_of(it, it->cur->name));
+export Result<char*, AnnotationError> (borrow Annotations it) name() {
+    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(string_of(it, it.cur->name));
 }
 /** Get the current function address.
  * @return Ok(function address), or Err(NoCurrentRow) when there is no current row.
  */
-export Result<CodeAddress, AnnotationError> (Annotations *it) fn() {
-    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    return Ok(it->cur->fn);
+@safe
+export Result<CodeAddress, AnnotationError> (borrow Annotations it) fn() {
+    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(it.cur->fn);
 }
 /** Get the current receiver type name.
  * @return Ok(type name), or Err(NoCurrentRow); free functions have an empty type name.
  */
-export Result<char*, AnnotationError> (Annotations *it) type() {
-    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    return Ok(string_of(it, it->cur->type));
+export Result<char*, AnnotationError> (borrow Annotations it) type() {
+    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(string_of(it, it.cur->type));
 }
 /** Get the current receiver type size.
  * @return Ok(type size), or Err(NoCurrentRow); free functions have size zero.
  */
-export Result<i32, AnnotationError> (Annotations *it) size() {
-    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    return Ok(it->cur->size);
+@safe
+export Result<i32, AnnotationError> (borrow Annotations it) size() {
+    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(it.cur->size);
 }
 /** Get the current annotation's argument count.
  * @return Ok(argument count), or Err(NoCurrentRow) when there is no current row.
  */
-export Result<i32, AnnotationError> (Annotations *it) argc() {
-    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    return Ok(it->cur->argc);
+@safe
+export Result<i32, AnnotationError> (borrow Annotations it) argc() {
+    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    return Ok(it.cur->argc);
 }
 
 /** Read a numeric or boolean argument.
  * @param k Valid argument index in the current row.
  * @return Ok(stored integer), or Err when the row/index is invalid.
  */
-export Result<i32, AnnotationError> (Annotations *it) arg(i32 k) {
-    if (it->cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    if (k < 0 || k >= it->cur->argc || k >= 3) { return Err(AnnotationError::InvalidArgumentIndex(k)); }
-    if (k == 0) { return Ok(it->cur->a0); }
-    if (k == 1) { return Ok(it->cur->a1); }
-    return Ok(it->cur->a2);
+@safe
+export Result<i32, AnnotationError> (borrow Annotations it) arg(i32 k) {
+    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
+    if (k < 0 || k >= it.cur->argc || k >= 3) { return Err(AnnotationError::InvalidArgumentIndex(k)); }
+    if (k == 0) { return Ok(it.cur->a0); }
+    if (k == 1) { return Ok(it.cur->a1); }
+    return Ok(it.cur->a2);
 }
 
 /** Read an argument as a string.
  * @param k Valid argument index in the current row.
  * @return Ok(string value), or Err when the row/index is invalid.
  */
-export Result<char*, AnnotationError> (Annotations *it) text(i32 k) {
-    Result<i32, AnnotationError> argument = it->arg(k);
+export Result<char*, AnnotationError> (borrow mut Annotations it) text(i32 k) {
+    Result<i32, AnnotationError> argument = it.arg(k);
     i32 v = argument?;
     if (v == 0) { return Ok(""); }
     return Ok(string_of(it, (char*)v));
@@ -268,8 +277,9 @@ export Result<char*, AnnotationError> (Annotations *it) text(i32 k) {
  * @param k Valid argument index in the current row.
  * @return Ok(true) for a non-zero value, or Err when the row/index is invalid.
  */
-export Result<bool, AnnotationError> (Annotations *it) flag(i32 k) {
-    Result<i32, AnnotationError> argument = it->arg(k);
+@safe
+export Result<bool, AnnotationError> (borrow mut Annotations it) flag(i32 k) {
+    Result<i32, AnnotationError> argument = it.arg(k);
     i32 value = argument?;
     return Ok(value != 0);
 }

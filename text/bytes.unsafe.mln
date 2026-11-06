@@ -12,6 +12,7 @@ import { Option } from "@std/core/option.mln";
 // allocates. Reads mask with 0xFF because `char` sign-extends into i32.
 
 /** Zero-extends a byte-sized value to i32. */
+@safe
 export i32 as_unsigned(i32 value) { return value & 0xFF; }
 
 /** Fill dst with the low byte of value.

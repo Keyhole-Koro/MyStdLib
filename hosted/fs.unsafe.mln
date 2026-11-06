@@ -8,6 +8,7 @@ import { OsCall } from "@contracts/myos/services.contract.mln";
 import { SyscallFailure } from "@contracts/myos/syscall.contract.mln";
 import { Result } from "@std/core/result.mln";
 import { Option } from "@std/core/option.mln";
+import { Text } from "@std/text/text.mln";
 import { FsError, SeekWhence } from "@contracts/io/fs.contract.mln";
 import {
     FsOpenArgs, FsCreateArgs, FsMkdirArgs, FsRemoveArgs, FsReadArgs,
@@ -16,6 +17,31 @@ import {
 } from "@contracts/myos/fs-args.contract.mln";
 
 export const i32 NAME_MAX = 16;
+
+/** One read: how many bytes the file gave, and those bytes as text.
+ * @property got Bytes read; zero at end of file.
+ * @property text The bytes, up to the first NUL.
+ */
+export struct FsChunk {
+    i32 got;
+    Text<128> text;
+};
+
+/** One directory entry.
+ * @property index Filesystem entry index.
+ * @property name Entry name.
+ */
+export struct DirEntry {
+    i32 index;
+    Text<16> name;
+};
+
+// The OS reads a path up to its NUL; a Text always ends in one.
+Text<128> c_path(str path) {
+    Text<128> buffer = Text<128> {};
+    buffer.append(path);
+    return buffer;
+}
 
 /**
  * Sends one argument record under the service its contract binds it to.
@@ -30,10 +56,12 @@ Result<i32, SyscallFailure> send<A: OsCall>(A *args) {
  * @param path NUL-terminated path to open.
  * @return File descriptor on success, or the filesystem error.
  */
-export Result<i32, FsError> open(char *path) {
+@safe
+export Result<i32, FsError> open(str path) {
+    Text<128> c = c_path(path);
     Result<i32, FsError> result;
     FsOpenArgs args = FsOpenArgs {
-        path: path, result_out: &result
+        path: c.as_ptr(), result_out: &result
     };
     send<FsOpenArgs>(&args);
     return result;
@@ -43,40 +71,50 @@ export Result<i32, FsError> open(char *path) {
  * @param path NUL-terminated path to create.
  * @return File descriptor on success, or the filesystem error.
  */
-export Result<i32, FsError> create(char *path) {
+@safe
+export Result<i32, FsError> create(str path) {
+    Text<128> c = c_path(path);
     Result<i32, FsError> result;
     FsCreateArgs args = FsCreateArgs {
-        path: path, result_out: &result
+        path: c.as_ptr(), result_out: &result
     };
     send<FsCreateArgs>(&args);
     return result;
 }
 
-/** Read bytes from an open file.
+/** Read up to 127 bytes from an open file.
  * @param fd File descriptor.
- * @param buf Destination buffer address.
- * @param size Maximum number of bytes to read.
- * @return Bytes read, including zero at end of file, or the filesystem error.
+ * @return The chunk (`got` is zero at end of file), or the filesystem error.
  */
-export Result<i32, FsError> read(i32 fd, i32 buf, i32 size) {
+@safe
+export Result<FsChunk, FsError> read(i32 fd) {
+    FsChunk chunk = FsChunk {};
     Result<i32, FsError> result;
     FsReadArgs args = FsReadArgs {
-        fd: fd, buffer: (char*)buf, size: size, result_out: &result
+        fd: fd, buffer: chunk.text.as_ptr(), size: 127, result_out: &result
     };
     send<FsReadArgs>(&args);
-    return result;
+    i32 got = case result of {
+        Ok(value) -> value;
+        Err(error) -> ({ return Err(error); });
+    };
+    chunk.got = got;
+    char *bytes = chunk.text.as_ptr();
+    if (got >= 0) { bytes[got] = (char)0; }
+    chunk.text.sync_from_ptr();
+    return Ok(chunk);
 }
 
 /** Write bytes to an open file.
  * @param fd File descriptor.
- * @param buf Source buffer address.
- * @param size Number of bytes to write.
+ * @param data Bytes to write.
  * @return Bytes written, or the filesystem error.
  */
-export Result<i32, FsError> write(i32 fd, i32 buf, i32 size) {
+@safe
+export Result<i32, FsError> write(i32 fd, str data) {
     Result<i32, FsError> result;
     FsWriteArgs args = FsWriteArgs {
-        fd: fd, buffer: (char*)buf, size: size, result_out: &result
+        fd: fd, buffer: data.data, size: data.length, result_out: &result
     };
     send<FsWriteArgs>(&args);
     return result;
@@ -88,6 +126,7 @@ export Result<i32, FsError> write(i32 fd, i32 buf, i32 size) {
  * @param whence Reference point for the offset.
  * @return New absolute file offset, or the filesystem error.
  */
+@safe
 export Result<i32, FsError> seek(i32 fd, i32 offset, SeekWhence whence) {
     Result<i32, FsError> result;
     FsSeekArgs args = FsSeekArgs {
@@ -100,6 +139,7 @@ export Result<i32, FsError> seek(i32 fd, i32 offset, SeekWhence whence) {
 /** Close an open file descriptor.
  * @param fd File descriptor to close.
  */
+@safe
 export void close(i32 fd) {
     FsCloseArgs args = FsCloseArgs { fd: fd };
     send<FsCloseArgs>(&args);
@@ -109,10 +149,12 @@ export void close(i32 fd) {
  * @param path NUL-terminated path of the entry to remove.
  * @return Ok on success, or the filesystem error.
  */
-export Result<_, FsError> remove(char *path) {
+@safe
+export Result<_, FsError> remove(str path) {
+    Text<128> c = c_path(path);
     Result<_, FsError> result;
     FsRemoveArgs args = FsRemoveArgs {
-        path: path, result_out: &result
+        path: c.as_ptr(), result_out: &result
     };
     send<FsRemoveArgs>(&args);
     return result;
@@ -122,35 +164,52 @@ export Result<_, FsError> remove(char *path) {
  * @param path NUL-terminated directory path.
  * @return Directory entry index, or the filesystem error.
  */
-export Result<i32, FsError> mkdir(char *path) {
+@safe
+export Result<i32, FsError> mkdir(str path) {
+    Text<128> c = c_path(path);
     Result<i32, FsError> result;
     FsMkdirArgs args = FsMkdirArgs {
-        path: path, result_out: &result
+        path: c.as_ptr(), result_out: &result
     };
     send<FsMkdirArgs>(&args);
     return result;
 }
 
-/** Find the next directory entry and copy its name to out.
- * @param dir NUL-terminated directory path.
+/** Find the next directory entry.
+ * @param dir Directory path.
  * @param start Entry index at which to begin searching.
- * @param out Destination for the entry name.
- * @param cap Capacity of out in bytes, including the terminator.
- * @return Ok(Some(index)) when found, Ok(None) at end, or Err on failure.
+ * @return Ok(Some(entry)) when found, Ok(None) at end, or Err on failure.
  */
-export Result<Option<i32>, FsError> dir_next_at(char *dir, i32 start, char *out, i32 cap) {
+@safe
+export Result<Option<DirEntry>, FsError> next_entry(str dir, i32 start) {
+    Text<128> c = c_path(dir);
+    DirEntry entry = DirEntry {};
     Result<Option<i32>, FsError> result;
     FsDirNextArgs args = FsDirNextArgs {
-        path: dir, start: start, name_out: out, name_cap: cap, result_out: &result
+        path: c.as_ptr(), start: start, name_out: entry.name.as_ptr(),
+        name_cap: NAME_MAX, result_out: &result
     };
     send<FsDirNextArgs>(&args);
-    return result;
+    Option<i32> found = case result of {
+        Ok(value) -> value;
+        Err(error) -> ({ return Err(error); });
+    };
+    Option<DirEntry> none = None;
+    i32 index = case found of {
+        Some(value) -> value;
+        None -> ({ return Ok(none); });
+    };
+    entry.index = index;
+    entry.name.sync_from_ptr();
+    Option<DirEntry> some = Some(entry);
+    return Ok(some);
 }
 
 /** Check whether a filesystem entry is a directory.
  * @param idx Filesystem entry index.
  * @return True if it is a directory, or the filesystem error.
  */
+@safe
 export Result<bool, FsError> is_dir(i32 idx) {
     Result<bool, FsError> result;
     FsIsDirArgs args = FsIsDirArgs {
@@ -164,6 +223,7 @@ export Result<bool, FsError> is_dir(i32 idx) {
  * @param idx Filesystem entry index.
  * @return Entry size in bytes, or the filesystem error.
  */
+@safe
 export Result<i32, FsError> entry_size(i32 idx) {
     Result<i32, FsError> result;
     FsEntrySizeArgs args = FsEntrySizeArgs {

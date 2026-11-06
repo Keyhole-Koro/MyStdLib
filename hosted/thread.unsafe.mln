@@ -40,6 +40,7 @@ void thread_trampoline(i32 entry_address, i32 arg) {
  * @param arg Opaque integer passed to the worker.
  * @return Ok(owned Thread handle), or a typed creation/validation error.
  */
+@safe
 export Result<Thread, ThreadError> spawn(fn(i32 value) -> i32 entry, i32 arg) {
     return spawn_sized(entry, arg, 0);
 }
@@ -51,6 +52,7 @@ export Result<Thread, ThreadError> spawn(fn(i32 value) -> i32 entry, i32 arg) {
  * @param stack_bytes Requested mapped stack bytes; zero selects the default.
  * @return Ok(owned Thread handle), or a typed creation/validation error.
  */
+@safe
 export Result<Thread, ThreadError> spawn_sized(
     fn(i32 value) -> i32 entry,
     i32 arg,
@@ -73,17 +75,19 @@ export Result<Thread, ThreadError> spawn_sized(
  * Waits for this worker once and consumes the handle on success.
  * @return Ok(worker exit code), or a join/address error; successful join sets tid to zero.
  */
-export Result<i32, ThreadError> (Thread *self) join() {
-    if (self->tid == 0) { return Err(ThreadError::AlreadyJoined(0)); }
+@safe
+export Result<i32, ThreadError> (borrow mut Thread self) join() {
+    if (self.tid == 0) { return Err(ThreadError::AlreadyJoined(0)); }
     i32 value = 0;
-    i32 target = self->tid;
+    i32 target = self.tid;
     SyscallStatus status = sys_thread_join(target, &value);
     if (status != SyscallStatus::Ok) { return Err(syscall_error(status, value)); }
-    self->tid = 0;
+    self.tid = 0;
     return Ok(value);
 }
 
 /** @return Ok(stable positive caller TID), or a typed syscall failure. */
+@safe
 export Result<i32, ThreadError> self() {
     i32 value = 0;
     SyscallStatus status = sys_thread_self(&value);
@@ -95,10 +99,12 @@ export Result<i32, ThreadError> self() {
  * Terminates only the calling thread and never returns normally.
  * @param code Exit code retained for a future join or last-thread process exit.
  */
+@safe
 export void exit(i32 code) {
     sys_thread_exit(code);
     while (1) { sys_yield(); }
 }
 
 /** Gives another runnable thread an opportunity to execute until the next tick. */
+@safe
 export void yield_now() { sys_yield(); }

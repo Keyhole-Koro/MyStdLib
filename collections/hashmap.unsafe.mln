@@ -53,6 +53,7 @@ export void (borrow mut HashMap<K, V> map) init<K, V>(K *keys, V *values, u8 *us
 /** Insert a key/value pair or replace the value for an existing key.
  * @return True on insertion or replacement, false if disabled or full.
  */
+@safe
 export bool (borrow mut HashMap<K, V> map) put<K: Hash + Eq, V>(K key, V value) {
     if (map.cap <= 0) { return false; }
     i32 slot = (i32)(hash_key<K>(&key) & (u32)(map.cap - 1));
@@ -125,12 +126,13 @@ export struct MapEntries<K, V> {
     i32 slot;
 };
 
+@safe
 export impl<K, V> Iterator<MapEntry<K, V>> for MapEntries<K, V> {
-    Option<MapEntry<K, V>> (Self *self) next() {
-        HashMap<K, V> *map = self->map;
-        while (self->slot < map->cap) {
-            i32 slot = self->slot;
-            self->slot = slot + 1;
+    Option<MapEntry<K, V>> (borrow mut Self self) next() {
+        HashMap<K, V> *map = self.map;
+        while (self.slot < map->cap) {
+            i32 slot = self.slot;
+            self.slot = slot + 1;
             if (map->used[slot] != 0) {
                 return Some(MapEntry<K, V> { key: map->keys + slot, value: map->values + slot });
             }
@@ -140,6 +142,7 @@ export impl<K, V> Iterator<MapEntry<K, V>> for MapEntries<K, V> {
 }
 
 /** An iterator over the stored key/value pairs. */
+@safe
 export MapEntries<K, V> (borrow HashMap<K, V> map) entries() {
     return MapEntries<K, V> { map: map, slot: 0 };
 }

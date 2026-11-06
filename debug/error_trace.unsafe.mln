@@ -41,6 +41,7 @@ export void note(char *site, i32 kind) {
 }
 
 /** Forgets the current trace. */
+@safe
 export void clear() {
     g_count = 0;
     g_dropped = 0;
@@ -49,6 +50,7 @@ export void clear() {
 /** Number of recorded sites, origin first.
  * @return Count of sites that site() can return.
  */
+@safe
 export i32 depth() {
     return g_count;
 }
@@ -56,6 +58,7 @@ export i32 depth() {
 /** Hops that did not fit after the first TRACE_CAPACITY sites.
  * @return Count of sites left out of the trace.
  */
+@safe
 export i32 dropped() {
     return g_dropped;
 }

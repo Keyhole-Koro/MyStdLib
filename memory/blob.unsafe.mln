@@ -1,0 +1,216 @@
+package blob;
+
+import allocator from "allocator.mln";
+import { Option } from "@std/core/option.mln";
+import { Result } from "@std/core/result.mln";
+
+// Variable-length bytes owned by a handle.
+//
+// A Blob is an index into a table this file owns, checked on every use, so a
+// forged or stale one reaches nothing. The bytes always end in a NUL past
+// `cap`, so a view can be handed to code that still reads to a terminator.
+//
+// free() takes the handle out of use at once, but the bytes stay allocated
+// until collect(), which the owner of the blobs calls where no `str` can be
+// alive: between requests. A view taken before free() therefore never reads
+// freed memory; a `str` cannot be stored, so none survives that point.
+
+const i32 BLOB_MAX = 2048;
+
+struct BlobRow {
+    i32 address;
+    i32 cap;
+    i32 gen;
+    bool used;
+    bool freed;
+};
+
+// In the heap rather than the image: the kernel's image has a hard size limit.
+i32 g_blob_rows = 0;
+i32 g_blob_high = 0;
+i32 g_blob_free_head = 0;
+bool g_blob_pending = false;
+
+/** A handle to a byte buffer. The zero value names nothing. */
+export struct Blob {
+    i32 id;
+};
+
+BlobRow *blob_row_at(i32 slot) {
+    BlobRow *rows = (BlobRow *)g_blob_rows;
+    return rows + slot;
+}
+
+bool blob_ensure_table() {
+    if (g_blob_rows != 0) { return true; }
+    i32 bytes = BLOB_MAX * sizeof(BlobRow);
+    i32 address = case allocator.alloc(bytes) of {
+        Ok(value) -> value;
+        Err(_) -> ({ return false; });
+    };
+    char *clear = (char *)address;
+    i32 i = 0;
+    while (i < bytes) { clear[i] = (char)0; i++; }
+    g_blob_rows = address;
+    return true;
+}
+
+// The slot `b` names, or -1.
+i32 blob_slot_of(Blob b) {
+    if (g_blob_rows == 0) { return -1; }
+    i32 slot = (b.id & 4095) - 1;
+    if (slot < 0 || slot >= BLOB_MAX) { return -1; }
+    BlobRow *row = blob_row_at(slot);
+    if (!row->used || row->gen != ((b.id >> 12) & 0xFFFFF)) { return -1; }
+    return slot;
+}
+
+/** Makes a zeroed buffer of `cap` usable bytes.
+ * @return The handle, or None when memory or the table runs out.
+ */
+@safe
+export Option<Blob> blob_new(i32 cap) {
+    if (cap < 0 || !blob_ensure_table()) { return None; }
+    i32 slot = g_blob_free_head - 1;
+    if (slot >= 0) {
+        BlobRow *reused = blob_row_at(slot);
+        g_blob_free_head = reused->address;
+    } else {
+        if (g_blob_high >= BLOB_MAX) { return None; }
+        slot = g_blob_high;
+        g_blob_high = g_blob_high + 1;
+    }
+    BlobRow *row = blob_row_at(slot);
+    i32 address = case allocator.alloc(cap + 1) of {
+        Ok(value) -> value;
+        Err(_) -> ({
+            row->address = g_blob_free_head;
+            g_blob_free_head = slot + 1;
+            return None;
+        });
+    };
+    char *bytes = (char *)address;
+    i32 i = 0;
+    while (i <= cap) { bytes[i] = (char)0; i++; }
+    row->address = address;
+    row->cap = cap;
+    row->used = true;
+    row->freed = false;
+    Blob made = Blob { id: (row->gen << 12) | (slot + 1) };
+    return Some(made);
+}
+
+/** Copies a string into a new buffer sized for it. */
+@safe
+export Option<Blob> blob_from(str text) {
+    Blob made = case blob_new(text.length) of {
+        Some(value) -> value;
+        None -> ({ return None; });
+    };
+    made.write(text);
+    Option<Blob> result = Some(made);
+    return result;
+}
+
+/** True when the handle names a live buffer. */
+@safe
+export bool (Blob b) is_live() { return blob_slot_of(b) >= 0; }
+
+/** Usable bytes, or zero for a dead handle. */
+@safe
+export i32 (Blob b) cap() {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return 0; }
+    BlobRow *row = blob_row_at(slot);
+    return row->cap;
+}
+
+/** The byte at `index`, or zero outside the buffer. */
+@safe
+export i32 (Blob b) at(i32 index) {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return 0; }
+    BlobRow *row = blob_row_at(slot);
+    if (index < 0 || index >= row->cap) { return 0; }
+    char *bytes = (char *)row->address;
+    return (i32)bytes[index] & 0xFF;
+}
+
+/** Stores a byte; outside the buffer it does nothing. */
+@safe
+export void (Blob b) put(i32 index, i32 value) {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return; }
+    BlobRow *row = blob_row_at(slot);
+    if (index < 0 || index >= row->cap) { return; }
+    char *bytes = (char *)row->address;
+    bytes[index] = (char)value;
+}
+
+/** Replaces the contents with `text`, cut to the capacity. */
+@safe
+export i32 (Blob b) write(str text) {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return 0; }
+    BlobRow *row = blob_row_at(slot);
+    char *bytes = (char *)row->address;
+    i32 n = text.length;
+    if (n > row->cap) { n = row->cap; }
+    i32 i = 0;
+    while (i < n) { bytes[i] = text.data[i]; i++; }
+    bytes[n] = (char)0;
+    return n;
+}
+
+/** The first `length` bytes, cut to the capacity, as a view. */
+@safe
+export str (Blob b) view(i32 length) {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return ""; }
+    BlobRow *row = blob_row_at(slot);
+    i32 n = length;
+    if (n < 0) { n = 0; }
+    if (n > row->cap) { n = row->cap; }
+    return str { data: (char *)row->address, length: n };
+}
+
+/** The bytes before the first NUL as a view. */
+@safe
+export str (Blob b) as_str() {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return ""; }
+    BlobRow *row = blob_row_at(slot);
+    char *bytes = (char *)row->address;
+    i32 n = 0;
+    while (n < row->cap && bytes[n] != 0) { n++; }
+    return str { data: bytes, length: n };
+}
+
+/** Ends the handle. Its bytes are released by the next collect(). */
+@safe
+export void (Blob b) free() {
+    i32 slot = blob_slot_of(b);
+    if (slot < 0) { return; }
+    BlobRow *row = blob_row_at(slot);
+    row->used = false;
+    row->freed = true;
+    row->gen = (row->gen + 1) & 0xFFFFF;
+    g_blob_pending = true;
+}
+
+/** Releases freed buffers. Call only where no `str` can be alive. */
+export void collect() {
+    if (!g_blob_pending) { return; }
+    g_blob_pending = false;
+    i32 slot = 0;
+    while (slot < g_blob_high) {
+        BlobRow *row = blob_row_at(slot);
+        if (row->freed) {
+            allocator.free(row->address);
+            row->freed = false;
+            row->address = g_blob_free_head;
+            g_blob_free_head = slot + 1;
+        }
+        slot++;
+    }
+}

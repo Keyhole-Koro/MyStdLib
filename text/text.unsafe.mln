@@ -20,29 +20,35 @@ export struct Text<const N> {
 };
 
 /** Make the text empty. A zero value already is; this is for reuse. */
-export void (Text<N> *self) init() {
-    self->length = 0;
-    self->data[0] = (char)0;
+@safe
+export void (borrow mut Text<N> self) init() {
+    self.length = 0;
+    self.data[0] = (char)0;
 }
 
 /** Return the number of text bytes, excluding the terminator. */
-export i32 (Text<N> *self) len() { return self->length; }
+@safe
+export i32 (borrow Text<N> self) len() { return self.length; }
 
 /** Return the maximum text length: N - 1, leaving room for the terminator. */
-export i32 (Text<N> *self) capacity() { return self->data.length - 1; }
+@safe
+export i32 (borrow Text<N> self) capacity() { return self.data.length - 1; }
 
 /** Return the unused text capacity. */
-export i32 (Text<N> *self) remaining() {
-    return self.capacity() - self->length;
+@safe
+export i32 (borrow Text<N> self) remaining() {
+    return self.capacity() - self.length;
 }
 
 /** Test whether the text is empty. */
-export bool (Text<N> *self) is_empty() { return self->length == 0; }
+@safe
+export bool (borrow Text<N> self) is_empty() { return self.length == 0; }
 
 /** Remove all text and restore the terminator. */
-export void (Text<N> *self) clear() {
-    self->length = 0;
-    self->data[0] = (char)0;
+@safe
+export void (borrow mut Text<N> self) clear() {
+    self.length = 0;
+    self.data[0] = (char)0;
 }
 
 /** Append a complete string view.
@@ -50,7 +56,8 @@ export void (Text<N> *self) clear() {
  * must stay a valid C string.
  * @return True on success; false leaves self unchanged.
  */
-export bool (Text<N> *self) append(str value) {
+@safe
+export bool (borrow mut Text<N> self) append(str value) {
     if (value.length > self.remaining()) { return false; }
     i32 i = 0;
     while (i < value.length) {
@@ -59,53 +66,56 @@ export bool (Text<N> *self) append(str value) {
     }
     i = 0;
     while (i < value.length) {
-        self->data[self->length + i] = value.data[i];
+        self.data[self.length + i] = value.data[i];
         i++;
     }
-    self->length = self->length + value.length;
-    self->data[self->length] = (char)0;
+    self.length = self.length + value.length;
+    self.data[self.length] = (char)0;
     return true;
 }
 
 /** Append one non-NUL byte atomically. */
-export bool (Text<N> *self) push(u8 value) {
-    if (value == 0 || self->length >= self.capacity()) { return false; }
-    self->data[self->length] = (char)value;
-    self->length++;
-    self->data[self->length] = (char)0;
+@safe
+export bool (borrow mut Text<N> self) push(u8 value) {
+    if (value == 0 || self.length >= self.capacity()) { return false; }
+    self.data[self.length] = (char)value;
+    self.length++;
+    self.data[self.length] = (char)0;
     return true;
 }
 
 /** Shorten the text to at most length bytes. */
-export void (Text<N> *self) truncate(i32 length) {
+@safe
+export void (borrow mut Text<N> self) truncate(i32 length) {
     if (length < 0) { length = 0; }
-    if (length < self->length) { self->length = length; }
-    self->data[self->length] = (char)0;
+    if (length < self.length) { self.length = length; }
+    self.data[self.length] = (char)0;
 }
 
 /** Borrow the text bytes as a length-aware MyLang string. */
-export str (Text<N> *self) as_str() {
-    return str { data: &self->data[0], length: self->length };
+@safe
+export str (borrow Text<N> self) as_str() {
+    return str { data: &self.data[0], length: self.length };
 }
 
 /** Borrow the NUL-terminated representation for a system call that still
  * takes `char *`. */
-export char * (Text<N> *self) as_ptr() { return &self->data[0]; }
+export char * (borrow Text<N> self) as_ptr() { return &self.data[0]; }
 
 /** Recompute the length after a system call wrote through as_ptr().
  * @return True when a terminator was found; false when the buffer had to be
  * terminated at its final byte.
  */
-export bool (Text<N> *self) sync_from_ptr() {
+export bool (borrow mut Text<N> self) sync_from_ptr() {
     i32 i = 0;
-    while (i < self->data.length) {
-        if (self->data[i] == 0) {
-            self->length = i;
+    while (i < self.data.length) {
+        if (self.data[i] == 0) {
+            self.length = i;
             return true;
         }
         i++;
     }
-    self->length = self->data.length - 1;
-    self->data[self->length] = (char)0;
+    self.length = self.data.length - 1;
+    self.data[self.length] = (char)0;
     return false;
 }

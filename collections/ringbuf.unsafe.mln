@@ -25,35 +25,38 @@ export struct RingBuffer<T> {
  * @param storage Storage for cap elements.
  * @param cap Number of storage slots; usable capacity is cap - 1.
  */
-export void (RingBuffer<T> *r) init(T *storage, i32 cap) {
-    r->data = storage;
-    r->cap = cap;
-    r->head = 0;
-    r->tail = 0;
+export void (borrow mut RingBuffer<T> r) init(T *storage, i32 cap) {
+    r.data = storage;
+    r.cap = cap;
+    r.head = 0;
+    r.tail = 0;
 }
 
 /** Return the maximum number of queued elements.
  * @return Storage slot count minus one.
  */
-export i32 (RingBuffer<T> *r) capacity() {
-    return r->cap - 1;
+@safe
+export i32 (borrow RingBuffer<T> r) capacity() {
+    return r.cap - 1;
 }
 
 /** Return the number of queued elements.
  * @return Current queue length.
  */
-export i32 (RingBuffer<T> *r) count() {
-    if (r->tail >= r->head) {
-        return r->tail - r->head;
+@safe
+export i32 (borrow RingBuffer<T> r) count() {
+    if (r.tail >= r.head) {
+        return r.tail - r.head;
     }
-    return r->cap - r->head + r->tail;
+    return r.cap - r.head + r.tail;
 }
 
 /** Check whether the queue contains an element.
  * @return True when non-empty.
  */
-export bool (RingBuffer<T> *r) has() {
-    if (r->head == r->tail) {
+@safe
+export bool (borrow RingBuffer<T> r) has() {
+    if (r.head == r.tail) {
         return false;
     }
     return true;
@@ -62,12 +65,13 @@ export bool (RingBuffer<T> *r) has() {
 /** Check whether the queue is full.
  * @return True when another element cannot be queued.
  */
-export bool (RingBuffer<T> *r) full() {
-    i32 next = r->tail + 1;
-    if (next >= r->cap) {
+@safe
+export bool (borrow RingBuffer<T> r) full() {
+    i32 next = r.tail + 1;
+    if (next >= r.cap) {
         next = 0;
     }
-    if (next == r->head) {
+    if (next == r.head) {
         return true;
     }
     return false;
@@ -77,17 +81,18 @@ export bool (RingBuffer<T> *r) full() {
  * @param value Element to queue.
  * @return True if queued, false if the queue is full.
  */
-export bool (RingBuffer<T> *r) push(T value) {
-    i32 next = r->tail + 1;
-    if (next >= r->cap) {
+@safe
+export bool (borrow mut RingBuffer<T> r) push(T value) {
+    i32 next = r.tail + 1;
+    if (next >= r.cap) {
         next = 0;
     }
-    if (next == r->head) {
+    if (next == r.head) {
         return false;
     }
-    T *data = r->data;
-    data[r->tail] = value;
-    r->tail = next;
+    T *data = r.data;
+    data[r.tail] = value;
+    r.tail = next;
     return true;
 }
 
@@ -95,15 +100,15 @@ export bool (RingBuffer<T> *r) push(T value) {
  * @param out Destination for the removed value; unchanged when empty.
  * @return True if a value was removed, false if empty.
  */
-export bool (RingBuffer<T> *r) pop(T *out) {
-    if (r->head == r->tail) {
+export bool (borrow mut RingBuffer<T> r) pop(T *out) {
+    if (r.head == r.tail) {
         return false;
     }
-    T *data = r->data;
-    *out = data[r->head];
-    r->head = r->head + 1;
-    if (r->head >= r->cap) {
-        r->head = 0;
+    T *data = r.data;
+    *out = data[r.head];
+    r.head = r.head + 1;
+    if (r.head >= r.cap) {
+        r.head = 0;
     }
     return true;
 }
@@ -112,21 +117,22 @@ export bool (RingBuffer<T> *r) pop(T *out) {
  * @param out Destination for the value; unchanged when empty.
  * @return True if a value was read, false if empty.
  */
-export bool (RingBuffer<T> *r) peek(T *out) {
-    if (r->head == r->tail) {
+export bool (borrow RingBuffer<T> r) peek(T *out) {
+    if (r.head == r.tail) {
         return false;
     }
-    T *data = r->data;
-    *out = data[r->head];
+    T *data = r.data;
+    *out = data[r.head];
     return true;
 }
 
 // Discard every queued value.
 /** Discard all queued values.
  */
-export void (RingBuffer<T> *r) clear() {
-    r->head = 0;
-    r->tail = 0;
+@safe
+export void (borrow mut RingBuffer<T> r) clear() {
+    r.head = 0;
+    r.tail = 0;
 }
 
 /** Pops queued elements oldest first: `for (char c in r.drain()) { ... }`
@@ -137,9 +143,10 @@ export struct RingDrain<T> {
     RingBuffer<T> *ring;
 };
 
+@safe
 export impl<T> Iterator<T> for RingDrain<T> {
-    Option<T> (Self *self) next() {
-        RingBuffer<T> *r = self->ring;
+    Option<T> (borrow mut Self self) next() {
+        RingBuffer<T> *r = self.ring;
         if (r->head == r->tail) { return None; }
         T *data = r->data;
         T item = data[r->head];
@@ -150,6 +157,7 @@ export impl<T> Iterator<T> for RingDrain<T> {
 }
 
 /** An iterator that pops every queued element. */
-export RingDrain<T> (RingBuffer<T> *r) drain() {
+@safe
+export RingDrain<T> (borrow RingBuffer<T> r) drain() {
     return RingDrain<T> { ring: r };
 }

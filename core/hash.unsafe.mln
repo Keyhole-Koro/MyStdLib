@@ -4,27 +4,31 @@
  * Implement this trait for user-defined key types alongside Eq.
  */
 export trait Hash {
-    u32 (Self *self) hash();
+    u32 (borrow Self self) hash();
 }
 
+@safe
 export impl Hash for i32 {
-    u32 (i32 *self) hash() { return (u32)*self; }
+    u32 (borrow i32 self) hash() { return (u32)*self; }
 }
 
+@safe
 export impl Hash for u32 {
-    u32 (u32 *self) hash() { return *self; }
+    u32 (borrow u32 self) hash() { return *self; }
 }
 
+@safe
 export impl Hash for u8 {
-    u32 (u8 *self) hash() { return (u32)*self; }
+    u32 (borrow u8 self) hash() { return (u32)*self; }
 }
 
+@safe
 export impl Hash for str {
-    u32 (str *self) hash() {
+    u32 (borrow str self) hash() {
         u32 value = 5381;
         i32 i = 0;
-        while (i < self->length) {
-            value = value * 33 + (u8)self->data[i];
+        while (i < self.length) {
+            value = value * 33 + (u8)self.data[i];
             i++;
         }
         return value;

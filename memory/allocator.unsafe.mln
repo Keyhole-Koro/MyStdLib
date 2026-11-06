@@ -42,6 +42,7 @@ export void free(i32 pointer) {
 }
 
 /** Reports whether both allocation operations have been installed. */
+@safe
 export bool is_configured() {
     return g_allocate != 0 && g_deallocate != 0;
 }

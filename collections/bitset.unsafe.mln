@@ -16,6 +16,7 @@ import bytes from "@std/text/bytes.mln";
  * @param n Number of bits required.
  * @return Number of bytes needed; n must be non-negative.
  */
+@safe
 export i32 bytes(i32 n) {
     return (n + 7) >> 3;
 }

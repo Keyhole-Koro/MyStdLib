@@ -4,5 +4,5 @@
  * error type implements this once so every place that reports it agrees.
  */
 export trait Describe {
-    char *(Self *self) describe();
+    str (borrow Self self) describe();
 }

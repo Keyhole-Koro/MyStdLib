@@ -3,5 +3,5 @@
  * Eq impl; integers, pointers, and plain enums keep their built-in equality.
  */
 export trait Eq {
-    bool (Self *self) eq(Self *other);
+    bool (borrow Self self) eq(borrow Self other);
 }
