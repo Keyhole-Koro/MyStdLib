@@ -4,8 +4,8 @@
  * @property None Represents the absence of a value.
  */
 export enum Option<T> {
-    Some(T),
     None,
+    Some(T),
 }
 
 /** True when the option holds a value. */
