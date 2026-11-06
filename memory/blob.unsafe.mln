@@ -108,8 +108,7 @@ export Option<Blob> blob_from(str text) {
         None -> ({ return None; });
     };
     made.write(text);
-    Option<Blob> result = Some(made);
-    return result;
+    return Some(made);
 }
 
 /** True when the handle names a live buffer. */

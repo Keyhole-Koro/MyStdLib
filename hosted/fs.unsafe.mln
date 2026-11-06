@@ -182,15 +182,13 @@ export Result<Option<DirEntry>, FsError> next_entry(str dir, i32 start) {
         Ok(value) -> value;
         Err(error) -> ({ return Err(error); });
     };
-    Option<DirEntry> none = None;
     i32 index = case found of {
         Some(value) -> value;
-        None -> ({ return Ok(none); });
+        None -> ({ return Ok(None); });
     };
     entry.index = index;
     entry.name.sync_from_ptr();
-    Option<DirEntry> some = Some(entry);
-    return Ok(some);
+    return Ok(Some(entry));
 }
 
 /** Check whether a filesystem entry is a directory.
