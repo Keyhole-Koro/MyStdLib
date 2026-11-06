@@ -1,15 +1,13 @@
 package hosted_log;
 
 import myos_service from "@std/platform/myos/service.mln";
-import { OsService } from "@contracts/myos/services.contract.mln";
-import { Text } from "@std/text/text.mln";
+import { OsService, LogArgs } from "@contracts/myos/services.contract.mln";
 
 /** Write a message to the hosted OS diagnostic log.
- * @param message NUL-terminated diagnostic text.
+ * @param message Diagnostic text.
  */
 @safe
 export void write(str message) {
-    Text<128> c = Text<128> {};
-    c.append(message);
-    myos_service.call(OsService::LOG, (i32)c.as_ptr());
+    LogArgs args = LogArgs { text: message.data, length: message.length };
+    myos_service.call(OsService::LOG, (i32)(&args));
 }

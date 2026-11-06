@@ -11,6 +11,10 @@ package error_trace;
 // share one. A trace that is handled rather than propagated stays readable
 // until the next origin replaces it.
 
+import str from "@std/text/str.mln";
+import { Text } from "@std/text/text.mln";
+import { Option } from "@std/core/option.mln";
+
 i32 TRACE_CAPACITY = 32;
 
 /** Kind of a recorded site, as passed by the compiler. */
@@ -66,11 +70,12 @@ export i32 dropped() {
 /** One recorded site.
  * @param index 0 is where the error was created; later entries are the hops
  *        it took toward the caller.
- * @return The site description, or 0 when index is out of range.
+ * @return The site description, or None when index is out of range.
  */
-export char *site(i32 index) {
-    if (index < 0 || index >= g_count) { return (char*)0; }
-    return g_sites[index];
+@safe
+export Option<str> site(i32 index) {
+    if (index < 0 || index >= g_count) { return None; }
+    return Some(str.from_c(g_sites[index]));
 }
 
 /** Writes the trace as text, one site per line:
@@ -79,38 +84,25 @@ export char *site(i32 index) {
  *       fs.mln:52 wait_for_completion (created)
  *       fs.mln:977 write (SsdError -> FsError)
  *
- * @param buf Destination buffer, always NUL-terminated when cap > 0.
- * @param cap Capacity of buf in bytes.
- * @return Number of bytes written, excluding the terminator.
+ * A line that no longer fits is left out.
+ *
+ * @param out Destination, replaced by the trace.
  */
-export i32 format(char *buf, i32 cap) {
-    if (cap <= 0) { return 0; }
-    i32 used = 0;
-    used = append(buf, cap, used, "error trace:\n");
+export void format(borrow Text<768> out) {
+    out.clear();
+    out.append("error trace:\n");
     if (g_count == 0) {
-        used = append(buf, cap, used, "  (empty)\n");
+        out.append("  (empty)\n");
     }
     i32 i = 0;
     while (i < g_count) {
-        used = append(buf, cap, used, "  ");
-        used = append(buf, cap, used, g_sites[i]);
-        if (i == 0) { used = append(buf, cap, used, " (created)"); }
-        used = append(buf, cap, used, "\n");
+        out.append("  ");
+        out.append(str.from_c(g_sites[i]));
+        if (i == 0) { out.append(" (created)"); }
+        out.append("\n");
         i++;
     }
     if (g_dropped > 0) {
-        used = append(buf, cap, used, "  ... more hops not recorded\n");
+        out.append("  ... more hops not recorded\n");
     }
-    return used;
-}
-
-i32 append(char *buf, i32 cap, i32 used, char *text) {
-    i32 k = 0;
-    while (text[k] != 0 && used + 1 < cap) {
-        buf[used] = text[k];
-        used++;
-        k++;
-    }
-    buf[used] = (char)0;
-    return used;
 }

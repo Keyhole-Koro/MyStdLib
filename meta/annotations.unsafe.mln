@@ -29,6 +29,7 @@ import { Result } from "@std/core/result.mln";
 import { CodeAddress } from "@std/core/address.mln";
 import mbin from "@std/format/mbin.mln";
 import str from "@std/text/str.mln";
+import { Text } from "@std/text/text.mln";
 
 /** One annotation row, stored as eight 32-bit words.
  * @property name Annotation identifier.
@@ -55,18 +56,20 @@ export struct AnnotationRow {
  * Call next() to advance, then use the accessors to read the current row.
  * @property rows Annotation rows being traversed.
  * @property index Index of the next row to examine.
- * @property want_name Name filter, or null for any name.
- * @property want_type Receiver-type filter, or null for any type.
+ * @property want_name Name filter, or None for any name.
+ * @property want_type Receiver-type filter, or None for any type.
  * @property cur Current row, or null before/after a successful iteration range.
  * @property image Source image for rows, or null for the running program.
+ * @property image_size Size of the source image in bytes.
  */
 export struct Annotations {
     Slice<AnnotationRow> rows;
     i32 index;           // next row to examine
-    char *want_name;     // 0: any
-    char *want_type;     // 0: any
+    Option<Text<64>> want_name;
+    Option<Text<64>> want_type;
     AnnotationRow *cur;  // 0 before the first next() and after the last
     char *image;         // 0: the running program's table; else the MBIN image the rows live in
+    i32 image_size;
 };
 
 /** Failure while reading the current annotation row. */
@@ -75,29 +78,46 @@ export enum AnnotationError {
     InvalidArgumentIndex(i32),
 }
 
-Annotations make(char *name, char *type) {
+// An empty filter accepts everything; one too long for the row's strings
+// stays a filter and matches nothing.
+Option<Text<64>> filter_of(str text) {
+    if (text.length == 0) { return None; }
+    Text<64> filter = Text<64> {};
+    filter.append(text);
+    return Some(filter);
+}
+
+bool matches(Option<Text<64>> filter, str text) {
+    return case filter of {
+        Some(want) -> want.as_str() == text;
+        None -> true;
+    };
+}
+
+Annotations make(str name, str type) {
     return Annotations {
         rows: as_slice<AnnotationRow>("annotations"),
         index: 0,
-        want_name: name,
-        want_type: type,
+        want_name: filter_of(name),
+        want_type: filter_of(type),
         cur: (AnnotationRow*)0,
-        image: (char*)0
+        image: (char*)0,
+        image_size: 0
     };
 }
 
 /** Read annotation rows from an MBIN image held in memory.
- * @param image MBIN file contents.
+ * @param image MBIN file contents, which must outlive the iterator.
  * @return Iterator over its annotation rows; empty if the section is absent.
  */
-export Annotations in_image(char *image) {
+export Annotations in_image(str image) {
     i32 len = 0;
     AnnotationRow *data = (AnnotationRow*)0;
     case mbin.section_offset(image, "annotations") of {
         Some(off) -> ({
             case mbin.section_size(image, "annotations") of {
                 Some(bytes) -> ({
-                    data = (AnnotationRow*)(&image[off]);
+                    data = (AnnotationRow*)(image.data + off);
                     len = bytes / sizeof(AnnotationRow);
                 });
                 None -> _;
@@ -110,30 +130,33 @@ export Annotations in_image(char *image) {
     return Annotations {
         rows: rows,
         index: 0,
-        want_name: (char*)0,
-        want_type: (char*)0,
+        want_name: filter_of(""),
+        want_type: filter_of(""),
         cur: (AnnotationRow*)0,
-        image: image
+        image: image.data,
+        image_size: image.length
     };
 }
 
 /** Set filters and restart iteration.
- * @param name Annotation name, or null to accept any name.
- * @param type Receiver type, or null to accept any type.
+ * @param name Annotation name, or "" to accept any name.
+ * @param type Receiver type, or "" to accept any type.
  */
-export void (borrow Annotations it) on(char *name, char *type) {
-    it.want_name = name;
-    it.want_type = type;
+@safe
+export void (borrow Annotations it) on(str name, str type) {
+    it.want_name = filter_of(name);
+    it.want_type = filter_of(type);
     it.index = 0;
     it.cur = (AnnotationRow*)0;
 }
 
-// A string the row points at, as a pointer this program can read.
-char *string_of(Annotations it, char *s) {
-    if (it.image == 0) { return s; }
+// A string the row points at, as a view this program can read.
+str string_of(Annotations it, char *s) {
     if (s == 0) { return ""; }
-    return case mbin.va_to_ptr(it.image, (i32)s) of {
-        Some(p) -> p;
+    if (it.image == 0) { return str.from_c(s); }
+    str image = str { data: it.image, length: it.image_size };
+    return case mbin.string_at(image, (i32)s) of {
+        Some(text) -> text;
         None -> "";
     };
 }
@@ -142,26 +165,29 @@ char *string_of(Annotations it, char *s) {
  * @return New unfiltered iterator.
  */
 @safe
-export Annotations all() { return make((char*)0, (char*)0); }
+export Annotations all() { return make("", ""); }
 
 /** Iterate over rows with a given annotation name.
  * @param name Annotation name to match.
  * @return Iterator filtered by name.
  */
-export Annotations named(char *name) { return make(name, (char*)0); }
+@safe
+export Annotations named(str name) { return make(name, ""); }
 
 /** Iterate over annotations attached to methods of a receiver type.
  * @param type Receiver type name to match.
  * @return Iterator filtered by receiver type.
  */
-export Annotations of_type(char *type) { return make((char*)0, type); }
+@safe
+export Annotations of_type(str type) { return make("", type); }
 
 /** Iterate using both annotation-name and receiver-type filters.
- * @param name Annotation name, or null to accept any name.
- * @param type Receiver type, or null to accept any type.
+ * @param name Annotation name, or "" to accept any name.
+ * @param type Receiver type, or "" to accept any type.
  * @return Iterator matching both supplied filters.
  */
-export Annotations where(char *name, char *type) { return make(name, type); }
+@safe
+export Annotations where(str name, str type) { return make(name, type); }
 
 /** Count rows in the running program's linked annotation table.
  * @return Total row count.
@@ -185,8 +211,8 @@ export bool (borrow Annotations it) next() {
             None -> ({ break; });
         };
         it.index++;
-        if (it.want_name != 0 && !str.eq(string_of(it, r.name), it.want_name)) { continue; }
-        if (it.want_type != 0 && !str.eq(string_of(it, r.type), it.want_type)) { continue; }
+        if (!matches(it.want_name, string_of(it, r.name))) { continue; }
+        if (!matches(it.want_type, string_of(it, r.type))) { continue; }
         it.cur = r;
         return true;
     }
@@ -213,7 +239,8 @@ export Option<AnnotationRow*> (Annotations it) row() {
 /** Get the current annotation name.
  * @return Ok(annotation name), or Err(NoCurrentRow) when there is no current row.
  */
-export Result<char*, AnnotationError> (Annotations it) name() {
+@safe
+export Result<str, AnnotationError> (Annotations it) name() {
     if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
     return Ok(string_of(it, it.cur->name));
 }
@@ -228,7 +255,8 @@ export Result<CodeAddress, AnnotationError> (Annotations it) fn() {
 /** Get the current receiver type name.
  * @return Ok(type name), or Err(NoCurrentRow); free functions have an empty type name.
  */
-export Result<char*, AnnotationError> (Annotations it) type() {
+@safe
+export Result<str, AnnotationError> (Annotations it) type() {
     if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
     return Ok(string_of(it, it.cur->type));
 }
@@ -266,7 +294,8 @@ export Result<i32, AnnotationError> (Annotations it) arg(i32 k) {
  * @param k Valid argument index in the current row.
  * @return Ok(string value), or Err when the row/index is invalid.
  */
-export Result<char*, AnnotationError> (borrow Annotations it) text(i32 k) {
+@safe
+export Result<str, AnnotationError> (borrow Annotations it) text(i32 k) {
     Result<i32, AnnotationError> argument = it.arg(k);
     i32 v = argument?;
     if (v == 0) { return Ok(""); }

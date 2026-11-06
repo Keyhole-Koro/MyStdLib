@@ -22,21 +22,22 @@ import str from "@std/text/str.mln";
 extern i32 __sections[];
 
 // Directory row of `name`, or None.
-Option<i32> find(char *name) {
+Option<i32> find(str name) {
     i32 i = 0;
     while (__sections[i * 3] != 0) {
         char *section_name = (char*)__sections[i * 3];
-        if (section_name.as_str() == name.as_str()) { return Some(i); }
+        if (section_name.as_str() == name) { return Some(i); }
         i++;
     }
     return None;
 }
 
 /** Check whether the linker collected a named section.
- * @param name NUL-terminated section name.
+ * @param name Section name.
  * @return True when at least one object contributed the section.
  */
-export bool exists(char *name) {
+@safe
+export bool exists(str name) {
     return case find(name) of {
         Some(_) -> true;
         None -> false;
@@ -44,10 +45,11 @@ export bool exists(char *name) {
 }
 
 /** Get the address of a collected section.
- * @param name NUL-terminated section name.
+ * @param name Section name.
  * @return Address of the first byte, or None when the section is absent.
  */
-export Option<i32> start(char *name) {
+@safe
+export Option<i32> start(str name) {
     i32 i = case find(name) of {
         Some(v) -> v;
         None -> ({ return None; });
@@ -56,10 +58,11 @@ export Option<i32> start(char *name) {
 }
 
 /** Get the total byte size of a collected section.
- * @param name NUL-terminated section name.
+ * @param name Section name.
  * @return Combined size in bytes, or None when the section is absent.
  */
-export Option<i32> size(char *name) {
+@safe
+export Option<i32> size(str name) {
     i32 i = case find(name) of {
         Some(v) -> v;
         None -> ({ return None; });
@@ -69,10 +72,10 @@ export Option<i32> size(char *name) {
 
 /** View a collected section as a slice of T.
  * The element count is the section byte size divided by sizeof(T).
- * @param name NUL-terminated section name.
+ * @param name Section name.
  * @return Slice over the section, or an empty slice when it is absent.
  */
-export Slice<T> as_slice<T>(char *name) {
+export Slice<T> as_slice<T>(str name) {
     Slice<T> s;
     T *data = (T*)0;
     i32 len = 0;

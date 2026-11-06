@@ -36,13 +36,6 @@ export struct DirEntry {
     Text<16> name;
 };
 
-// The OS reads a path up to its NUL; a Text always ends in one.
-Text<128> c_path(str path) {
-    Text<128> buffer = Text<128> {};
-    buffer.append(path);
-    return buffer;
-}
-
 /**
  * Sends one argument record under the service its contract binds it to.
  * @param args Argument record; its result_out names the caller's reply slot.
@@ -53,30 +46,28 @@ Result<i32, SyscallFailure> send<A: OsCall>(A *args) {
 }
 
 /** Open a filesystem path.
- * @param path NUL-terminated path to open.
+ * @param path Path to open.
  * @return File descriptor on success, or the filesystem error.
  */
 @safe
 export Result<i32, FsError> open(str path) {
-    Text<128> c = c_path(path);
     Result<i32, FsError> result;
     FsOpenArgs args = FsOpenArgs {
-        path: c.as_ptr(), result_out: &result
+        path: path.data, path_length: path.length, result_out: &result
     };
     send<FsOpenArgs>(&args);
     return result;
 }
 
 /** Create and open a filesystem path.
- * @param path NUL-terminated path to create.
+ * @param path Path to create.
  * @return File descriptor on success, or the filesystem error.
  */
 @safe
 export Result<i32, FsError> create(str path) {
-    Text<128> c = c_path(path);
     Result<i32, FsError> result;
     FsCreateArgs args = FsCreateArgs {
-        path: c.as_ptr(), result_out: &result
+        path: path.data, path_length: path.length, result_out: &result
     };
     send<FsCreateArgs>(&args);
     return result;
@@ -146,30 +137,28 @@ export void close(i32 fd) {
 }
 
 /** Remove a filesystem entry.
- * @param path NUL-terminated path of the entry to remove.
+ * @param path Path of the entry to remove.
  * @return Ok on success, or the filesystem error.
  */
 @safe
 export Result<_, FsError> remove(str path) {
-    Text<128> c = c_path(path);
     Result<_, FsError> result;
     FsRemoveArgs args = FsRemoveArgs {
-        path: c.as_ptr(), result_out: &result
+        path: path.data, path_length: path.length, result_out: &result
     };
     send<FsRemoveArgs>(&args);
     return result;
 }
 
 /** Create a directory.
- * @param path NUL-terminated directory path.
+ * @param path Directory path.
  * @return Directory entry index, or the filesystem error.
  */
 @safe
 export Result<i32, FsError> mkdir(str path) {
-    Text<128> c = c_path(path);
     Result<i32, FsError> result;
     FsMkdirArgs args = FsMkdirArgs {
-        path: c.as_ptr(), result_out: &result
+        path: path.data, path_length: path.length, result_out: &result
     };
     send<FsMkdirArgs>(&args);
     return result;
@@ -182,11 +171,10 @@ export Result<i32, FsError> mkdir(str path) {
  */
 @safe
 export Result<Option<DirEntry>, FsError> next_entry(str dir, i32 start) {
-    Text<128> c = c_path(dir);
     DirEntry entry = DirEntry {};
     Result<Option<i32>, FsError> result;
     FsDirNextArgs args = FsDirNextArgs {
-        path: c.as_ptr(), start: start, name_out: entry.name.as_ptr(),
+        path: dir.data, path_length: dir.length, start: start, name_out: entry.name.as_ptr(),
         name_cap: NAME_MAX, result_out: &result
     };
     send<FsDirNextArgs>(&args);

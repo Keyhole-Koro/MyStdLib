@@ -2,20 +2,28 @@ package assert;
 
 import str from "@std/text/str.mln";
 import bytes from "@std/text/bytes.mln";
+import { Text } from "@std/text/text.mln";
 import { Result } from "@std/core/result.mln";
 
 // Each runtime supplies this failure hook. A kernel test can print the
 // message and halt; a hosted runtime can print it and terminate the process.
 extern void assert_fail(char* message);
 
+// The hook reads to a NUL, which a view need not have.
+export void assert_failed(str message) {
+    Text<128> text = Text<128> {};
+    i32 i = 0;
+    while (i < message.length && text.push((u8)message.byte(i))) { i++; }
+    assert_fail(text.as_ptr());
+}
 
 /** Assert that condition is true.
  * @param condition Condition to check.
  * @param message Message passed to assert_fail when the assertion fails.
  */
-export void assert_true(bool condition, char* message) {
+export void assert_true(bool condition, str message) {
     if (!condition) {
-        assert_fail(message);
+        assert_failed(message);
     }
 }
 
@@ -23,9 +31,9 @@ export void assert_true(bool condition, char* message) {
  * @param condition Condition to check.
  * @param message Message passed to assert_fail when the assertion fails.
  */
-export void assert_false(bool condition, char* message) {
+export void assert_false(bool condition, str message) {
     if (condition) {
-        assert_fail(message);
+        assert_failed(message);
     }
 }
 
@@ -35,9 +43,9 @@ export void assert_false(bool condition, char* message) {
  * @param expected Value expected by the test.
  * @param message Message passed to assert_fail when values differ.
  */
-export void assert_eq<T>(T actual, T expected, char* message) {
+export void assert_eq<T>(T actual, T expected, str message) {
     if (actual != expected) {
-        assert_fail(message);
+        assert_failed(message);
     }
 }
 
@@ -46,9 +54,9 @@ export void assert_eq<T>(T actual, T expected, char* message) {
  * @param expected Value expected not to match.
  * @param message Message passed to assert_fail when values are equal.
  */
-export void assert_ne<T>(T actual, T expected, char* message) {
+export void assert_ne<T>(T actual, T expected, str message) {
     if (actual == expected) {
-        assert_fail(message);
+        assert_failed(message);
     }
 }
 
@@ -56,9 +64,9 @@ export void assert_ne<T>(T actual, T expected, char* message) {
  * @param value Pointer to check.
  * @param message Message passed to assert_fail when value is non-null.
  */
-export void assert_null<T>(T* value, char* message) {
+export void assert_null<T>(T* value, str message) {
     if (value != 0) {
-        assert_fail(message);
+        assert_failed(message);
     }
 }
 
@@ -66,20 +74,20 @@ export void assert_null<T>(T* value, char* message) {
  * @param value Pointer to check.
  * @param message Message passed to assert_fail when value is null.
  */
-export void assert_not_null<T>(T* value, char* message) {
+export void assert_not_null<T>(T* value, str message) {
     if (value == 0) {
-        assert_fail(message);
+        assert_failed(message);
     }
 }
 
-/** Assert equality of two NUL-terminated strings.
+/** Assert equality of two strings.
  * @param actual Actual string.
  * @param expected Expected string.
  * @param message Message passed to assert_fail when strings differ.
  */
-export void assert_str_eq(char* actual, char* expected, char* message) {
-    if (actual.as_str() != expected.as_str()) {
-        assert_fail(message);
+export void assert_str_eq(str actual, str expected, str message) {
+    if (actual != expected) {
+        assert_failed(message);
     }
 }
 
@@ -89,9 +97,9 @@ export void assert_str_eq(char* actual, char* expected, char* message) {
  * @param len Number of bytes to compare.
  * @param message Message passed to assert_fail when ranges differ.
  */
-export void assert_bytes_eq(char* actual, char* expected, i32 len, char* message) {
-    if (!bytes.eq(actual, expected, len)) {
-        assert_fail(message);
+export void assert_bytes_eq(str actual, str expected, i32 len, str message) {
+    if (len > actual.length || len > expected.length || !bytes.eq(actual.data, expected.data, len)) {
+        assert_failed(message);
     }
 }
 
@@ -99,7 +107,7 @@ export void assert_bytes_eq(char* actual, char* expected, i32 len, char* message
  * @param result Result value to inspect.
  * @param message Message passed to assert_fail when result is Err.
  */
-export void assert_result_ok<T, E>(Result<T, E>* result, char* message) {
+export void assert_result_ok<T, E>(Result<T, E>* result, str message) {
     case *result of {
         Ok(value) -> 0;
         Err(error) -> assert_fail(message);
@@ -110,7 +118,7 @@ export void assert_result_ok<T, E>(Result<T, E>* result, char* message) {
  * @param result Result value to inspect.
  * @param message Message passed to assert_fail when result is Ok.
  */
-export void assert_result_err<T, E>(Result<T, E>* result, char* message) {
+export void assert_result_err<T, E>(Result<T, E>* result, str message) {
     case *result of {
         Ok(value) -> assert_fail(message);
         Err(error) -> 0;
