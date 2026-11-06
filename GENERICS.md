@@ -49,7 +49,7 @@ are real payload enums built with `Some(value)` / `None` and `Ok(value)` /
 caller-provided key, value, and `u8` occupancy arrays. It has insertion,
 replacement, and lookup but not deletion or automatic growth. Its capacity must be
 a power of two. The separate occupancy array means zero remains a valid key.
-`put` takes ownership of non-Copy keys and values; `get` reads its key through
+`put` takes ownership of keys and values that cannot be copied; `get` reads its key through
 a non-owning pointer.
 
 `testing/assert.mln` requires each runtime to provide `assert_fail(char* message)`. It

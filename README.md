@@ -19,7 +19,6 @@ Core traits (see `docs/traits.md` in MyLangCompiler):
 | `From<S>` | `core/convert.mln` | `?` across error types, `Type::from(v)` |
 | `Eq` | `core/cmp.mln` | `==` / `!=` |
 | `Hash` | `core/hash.mln` | `HashMap<K, V>` keys |
-| `Copy` | `core/copy.mln` | explicit copy semantics for safe structs |
 | `Iterator<T>` | `core/iter.mln` | `for (T x in it)` |
 | `Drop` | `core/drop.mln` | automatic cleanup (`String` implements it) |
 | `Describe` | `core/describe.mln` | `describe()`: a short message; the error contracts implement it |
