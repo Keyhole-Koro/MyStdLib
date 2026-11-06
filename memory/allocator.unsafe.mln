@@ -12,8 +12,14 @@ export enum AllocationError {
 // The executable selects its allocator at startup. Keeping these as function
 // pointers lets the same owned containers run in the kernel, an application
 // process, or a freestanding compiler test without depending on one runtime.
-fn(i32 size) -> Result<i32, AllocationError> g_allocate = 0;
-fn(i32 pointer) -> void g_deallocate = 0;
+Result<i32, AllocationError> not_configured(i32 size) {
+    return Err(AllocationError::NotConfigured);
+}
+
+void nothing_to_free(i32 pointer) { }
+
+fn(i32 size) -> Result<i32, AllocationError> g_allocate = not_configured;
+fn(i32 pointer) -> void g_deallocate = nothing_to_free;
 
 /** Installs the allocation functions used by owned standard-library values.
  * @param allocate Function `(i32 size) -> Result<i32, AllocationError>`.
@@ -32,17 +38,10 @@ export void configure(
  */
 export Result<i32, AllocationError> alloc(i32 size) {
     if (size <= 0) { return Err(AllocationError::InvalidSize); }
-    if (g_allocate == 0) { return Err(AllocationError::NotConfigured); }
     return g_allocate(size);
 }
 
 /** Releases an allocation through the configured runtime allocator. */
 export void free(i32 pointer) {
-    if (pointer != 0 && g_deallocate != 0) { g_deallocate(pointer); }
-}
-
-/** Reports whether both allocation operations have been installed. */
-@safe
-export bool is_configured() {
-    return g_allocate != 0 && g_deallocate != 0;
+    if (pointer != 0) { g_deallocate(pointer); }
 }

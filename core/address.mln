@@ -5,3 +5,10 @@ export newtype CodeAddress = i32;
 
 /** A machine address naming readable or writable memory. */
 export newtype MemoryAddress = i32;
+
+/** An address a process handed to the kernel. It means something only in that
+ * process's address space, so it is not a kernel pointer. */
+export newtype UserAddress = i32;
+
+/** The address `n` bytes further on. */
+export UserAddress (UserAddress base) plus(i32 n) { return UserAddress((i32)base + n); }
