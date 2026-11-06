@@ -76,7 +76,7 @@ export Result<Thread, ThreadError> spawn_sized(
  * @return Ok(worker exit code), or a join/address error; successful join sets tid to zero.
  */
 @safe
-export Result<i32, ThreadError> (borrow mut Thread self) join() {
+export Result<i32, ThreadError> (borrow Thread self) join() {
     if (self.tid == 0) { return Err(ThreadError::AlreadyJoined(0)); }
     i32 value = 0;
     i32 target = self.tid;

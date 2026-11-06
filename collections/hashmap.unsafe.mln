@@ -33,7 +33,7 @@ export u32 hash_key<K: Hash>(K *key) {
 }
 
 /** Initialize the map using caller-owned key, value, and occupancy arrays. */
-export void (borrow mut HashMap<K, V> map) init<K, V>(K *keys, V *values, u8 *used, i32 cap) {
+export void (borrow HashMap<K, V> map) init<K, V>(K *keys, V *values, u8 *used, i32 cap) {
     map.keys = keys;
     map.values = values;
     map.used = used;
@@ -54,7 +54,7 @@ export void (borrow mut HashMap<K, V> map) init<K, V>(K *keys, V *values, u8 *us
  * @return True on insertion or replacement, false if disabled or full.
  */
 @safe
-export bool (borrow mut HashMap<K, V> map) put<K: Hash + Eq, V>(K key, V value) {
+export bool (borrow HashMap<K, V> map) put<K: Hash + Eq, V>(move K key, move V value) {
     if (map.cap <= 0) { return false; }
     i32 slot = (i32)(hash_key<K>(&key) & (u32)(map.cap - 1));
     i32 checked = 0;
@@ -87,17 +87,8 @@ export Option<borrow V> (borrow HashMap<K, V> map) get<K: Hash + Eq, V>(K *key) 
     return Some(&map.values[slot]);
 }
 
-/** Like get(), but the stored value can be written through the result.
- * The map stays mutably borrowed while the result is in scope.
- */
-export Option<borrow mut V> (borrow mut HashMap<K, V> map) get_mut<K: Hash + Eq, V>(K *key) {
-    i32 slot = map.slot_of(key);
-    if (slot < 0) { return None; }
-    return Some(&mut map.values[slot]);
-}
-
 /** The slot holding `key`, or -1 when the key is absent. */
-export i32 (borrow HashMap<K, V> map) slot_of<K: Hash + Eq, V>(K *key) {
+export i32 (HashMap<K, V> map) slot_of<K: Hash + Eq, V>(K *key) {
     if (map.cap <= 0) { return -1; }
     i32 slot = (i32)(hash_key<K>(key) & (u32)(map.cap - 1));
     i32 checked = 0;
@@ -128,7 +119,7 @@ export struct MapEntries<K, V> {
 
 @safe
 export impl<K, V> Iterator<MapEntry<K, V>> for MapEntries<K, V> {
-    Option<MapEntry<K, V>> (borrow mut Self self) next() {
+    Option<MapEntry<K, V>> (borrow Self self) next() {
         HashMap<K, V> *map = self.map;
         while (self.slot < map->cap) {
             i32 slot = self.slot;

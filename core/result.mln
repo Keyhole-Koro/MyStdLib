@@ -11,19 +11,19 @@ export enum Result<T, E> {
 }
 
 /** True for Ok. */
-export bool (borrow Result<T, E> self) is_ok() {
-    return case *self of { Ok(_) -> true; Err(_) -> false; };
+export bool (Result<T, E> self) is_ok() {
+    return case self of { Ok(_) -> true; Err(_) -> false; };
 }
 
 /** True for Err. */
-export bool (borrow Result<T, E> self) is_err() {
-    return case *self of { Ok(_) -> false; Err(_) -> true; };
+export bool (Result<T, E> self) is_err() {
+    return case self of { Ok(_) -> false; Err(_) -> true; };
 }
 
 /** The Ok value, or `fallback` for an Err. Consumes the result.
  * @param fallback Value returned for Err.
  */
-export T (Result<T, E> self) unwrap_or(T fallback) {
+export T (move Result<T, E> self) unwrap_or(move T fallback) {
     return case self of { Ok(value) -> value; Err(_) -> fallback; };
 }
 

@@ -19,7 +19,7 @@ export struct Arena<T> {
  * @param storage Caller-owned storage for cap elements.
  * @param cap Number of available elements.
  */
-export void (borrow mut Arena<T> a) init(T *storage, i32 cap) {
+export void (borrow Arena<T> a) init(T *storage, i32 cap) {
     a.data = storage;
     a.cap = cap;
     a.used = 0;
@@ -29,7 +29,7 @@ export void (borrow mut Arena<T> a) init(T *storage, i32 cap) {
  * All pointers previously returned by alloc() become invalid.
  */
 @safe
-export void (borrow mut Arena<T> a) reset() {
+export void (borrow Arena<T> a) reset() {
     a.used = 0;
 }
 
@@ -37,7 +37,7 @@ export void (borrow mut Arena<T> a) reset() {
  * @param count Number of elements to reserve.
  * @return Pointer to the reserved range, or null if capacity is insufficient.
  */
-export T *(borrow mut Arena<T> a) alloc(i32 count) {
+export T *(borrow Arena<T> a) alloc(i32 count) {
     if (count < 0 || count > a.cap - a.used) {
         return (T *)0;
     }

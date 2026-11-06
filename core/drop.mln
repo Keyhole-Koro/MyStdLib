@@ -3,5 +3,5 @@
  * code does not call drop() itself.
  */
 export trait Drop {
-    void (borrow mut Self self) drop();
+    void (borrow Self self) drop();
 }

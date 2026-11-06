@@ -55,7 +55,7 @@ export String from_str(str value) {
 @safe
 export impl Drop for String {
     /** Releases this string's allocation. Called automatically for the owner. */
-    void (borrow mut String self) drop() {
+    void (borrow String self) drop() {
         allocator.free((i32)self.data);
         self.data = (u8*)0;
         self.length = 0;
@@ -65,31 +65,31 @@ export impl Drop for String {
 
 /** Returns the current byte length. */
 @safe
-export i32 (borrow String self) len() { return self.length; }
+export i32 (String self) len() { return self.length; }
 
 /** Returns the allocated byte capacity. */
 @safe
-export i32 (borrow String self) capacity_bytes() { return self.capacity; }
+export i32 (String self) capacity_bytes() { return self.capacity; }
 
 /** Tests whether no text bytes are present. */
 @safe
-export bool (borrow String self) is_empty() { return self.length == 0; }
+export bool (String self) is_empty() { return self.length == 0; }
 
 /** Borrows the initialized bytes as str. */
 @safe
-export str (borrow String self) as_str() {
+export str (String self) as_str() {
     return str { data: (char*)self.data, length: self.length };
 }
 
 /** Removes the contents while retaining the allocation. */
 @safe
-export void (borrow mut String self) clear() { self.length = 0; }
+export void (borrow String self) clear() { self.length = 0; }
 
 /** Ensures room for additional more bytes without changing the contents.
  * @return True on success; false leaves self unchanged.
  */
 @safe
-export bool (borrow mut String self) reserve(i32 additional) {
+export bool (borrow String self) reserve(i32 additional) {
     if (additional < 0) { return false; }
     i32 required = self.length + additional;
     if (required < self.length) { return false; }
@@ -123,7 +123,7 @@ export bool (borrow mut String self) reserve(i32 additional) {
  * @return True on success; false leaves the text unchanged.
  */
 @safe
-export bool (borrow mut String self) append(str value) {
+export bool (borrow String self) append(str value) {
     i32 source_offset = -1;
     i32 source_address = (i32)value.data;
     i32 allocation_start = (i32)self.data;
@@ -145,7 +145,7 @@ export bool (borrow mut String self) append(str value) {
 
 /** Appends one byte, growing as necessary. */
 @safe
-export bool (borrow mut String self) push(u8 value) {
+export bool (borrow String self) push(u8 value) {
     if (!self.reserve(1)) { return false; }
     self.data[self.length] = value;
     self.length++;

@@ -61,7 +61,7 @@ export i32 copy(char* dst, char* src, i32 n) {
  * @param n Number of bytes to copy.
  * @return Number of bytes copied.
  */
-export i32 move(char* dst, char* src, i32 n) {
+export i32 overlapping_copy(char* dst, char* src, i32 n) {
     if (dst == src || n <= 0) {
         return n;
     }

@@ -13,11 +13,11 @@ export struct Mutex {
 };
 
 /** Resets a mutex to the unlocked state; callers must ensure it is not in use. */
-export void (borrow mut Mutex self) init() { atomic.store(&self.state, (i32)MutexState::Unlocked); }
+export void (borrow Mutex self) init() { atomic.store(&self.state, (i32)MutexState::Unlocked); }
 
 /** @return true when the caller acquired the mutex without blocking; otherwise false. */
 @safe
-export bool (borrow mut Mutex self) try_lock() {
+export bool (borrow Mutex self) try_lock() {
     i32 old = atomic.compare_exchange(
         &self.state, (i32)MutexState::Unlocked, (i32)MutexState::Locked
     );
@@ -26,7 +26,7 @@ export bool (borrow mut Mutex self) try_lock() {
 
 /** Acquires the mutex, sleeping and retrying its futex word when contended. */
 @safe
-export void (borrow mut Mutex self) lock() {
+export void (borrow Mutex self) lock() {
     i32 old = atomic.swap(&self.state, (i32)MutexState::Locked);
     if (old == (i32)MutexState::Unlocked) { return; }
     while (1) {
@@ -38,7 +38,7 @@ export void (borrow mut Mutex self) lock() {
 
 /** Releases a mutex and wakes one possible waiter when the old state was Contended. */
 @safe
-export void (borrow mut Mutex self) unlock() {
+export void (borrow Mutex self) unlock() {
     i32 old = atomic.swap(&self.state, (i32)MutexState::Unlocked);
     if (old == (i32)MutexState::Contended) { futex.wake(&self.state, 1); }
 }

@@ -15,14 +15,14 @@ export struct Condvar {
 };
 
 /** Resets the sequence counter; callers must ensure no waiter is registered. */
-export void (borrow mut Condvar self) init() { atomic.store(&self.sequence, 0); }
+export void (borrow Condvar self) init() { atomic.store(&self.sequence, 0); }
 
 /**
  * Unlocks mutex, waits for a sequence change, then reacquires mutex.
  * Spurious wakeup is permitted; callers must recheck their predicate in a loop.
  * @param mutex Held mutex protecting the caller's condition state.
  */
-export void (borrow mut Condvar self) wait(Mutex *mutex) {
+export void (borrow Condvar self) wait(Mutex *mutex) {
     i32 observed = atomic.load(&self.sequence);
     mutex.unlock();
     futex.wait(&self.sequence, observed, 0);
@@ -35,7 +35,7 @@ export void (borrow mut Condvar self) wait(Mutex *mutex) {
  * @param ticks Relative scheduler-tick timeout; zero waits indefinitely.
  * @return Ok(_) after notification/spurious wake, or a typed timeout/futex error.
  */
-export Result<_, ThreadError> (borrow mut Condvar self) wait_ticks(Mutex *mutex, i32 ticks) {
+export Result<_, ThreadError> (borrow Condvar self) wait_ticks(Mutex *mutex, i32 ticks) {
     i32 observed = atomic.load(&self.sequence);
     mutex.unlock();
     Result<_, ThreadError> result = futex.wait(&self.sequence, observed, ticks);
@@ -45,14 +45,14 @@ export Result<_, ThreadError> (borrow mut Condvar self) wait_ticks(Mutex *mutex,
 
 /** Advances the sequence and wakes at most one registered waiter. */
 @safe
-export void (borrow mut Condvar self) notify_one() {
+export void (borrow Condvar self) notify_one() {
     atomic.fetch_add(&self.sequence, 1);
     futex.wake(&self.sequence, 1);
 }
 
 /** Advances the sequence and wakes all currently registered waiters. */
 @safe
-export void (borrow mut Condvar self) notify_all() {
+export void (borrow Condvar self) notify_all() {
     atomic.fetch_add(&self.sequence, 1);
     futex.wake(&self.sequence, 0x7FFFFFFF);
 }

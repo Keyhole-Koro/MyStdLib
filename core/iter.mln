@@ -5,5 +5,5 @@ import { Option } from "option.mln";
  * iterator is advanced in place.
  */
 export trait Iterator<T> {
-    Option<T> (borrow mut Self self) next();
+    Option<T> (borrow Self self) next();
 }
