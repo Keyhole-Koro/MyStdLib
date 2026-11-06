@@ -137,5 +137,5 @@ export impl<K, V> Iterator<MapEntry<K, V>> for MapEntries<K, V> {
 /** An iterator over the stored key/value pairs. */
 @safe
 export MapEntries<K, V> (borrow HashMap<K, V> map) entries() {
-    return MapEntries<K, V> { map: map, slot: 0 };
+    return MapEntries<K, V> { map: &map, slot: 0 };
 }

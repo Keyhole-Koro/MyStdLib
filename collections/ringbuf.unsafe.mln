@@ -159,5 +159,5 @@ export impl<T> Iterator<T> for RingDrain<T> {
 /** An iterator that pops every queued element. */
 @safe
 export RingDrain<T> (borrow RingBuffer<T> r) drain() {
-    return RingDrain<T> { ring: r };
+    return RingDrain<T> { ring: &r };
 }

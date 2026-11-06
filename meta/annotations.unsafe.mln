@@ -213,7 +213,7 @@ export bool (borrow Annotations it) next() {
         it.index++;
         if (!matches(it.want_name, string_of(it, r.name))) { continue; }
         if (!matches(it.want_type, string_of(it, r.type))) { continue; }
-        it.cur = r;
+        it.cur = &r;
         return true;
     }
     it.cur = (AnnotationRow*)0;
