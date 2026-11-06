@@ -1,3 +1,5 @@
+import { Option } from "@std/core/option.mln";
+
 /** A singly linked intrusive list whose payload type owns its next link.
  * @property head First node, or null when the list is empty.
  * @property len Number of nodes in the list.
@@ -6,7 +8,7 @@
 //     IntrusiveList<Node> l;
 //     l.init();
 //     l.push_front(n, &n->next);
-//     Node *first = l.pop_front(&l.head->next);
+//     Option<Node *> first = l.pop_front(&l.head->next);
 export struct IntrusiveList<T> {
     T *head;
     i32 len;
@@ -31,15 +33,15 @@ export void (borrow IntrusiveList<T> list) push_front(T *node, T **node_next) {
 
 /** Remove and return the first node.
  * @param head_next Address of the current head node's next-link field.
- * @return Removed node, or null when the list is empty.
+ * @return Removed node, or None when the list is empty.
  */
-export T *(borrow IntrusiveList<T> list) pop_front(T **head_next) {
+export Option<T *> (borrow IntrusiveList<T> list) pop_front(T **head_next) {
     T *node = list.head;
     if (node == 0) {
-        return (T *)0;
+        return None;
     }
     list.head = *head_next;
     *head_next = (T *)0;
     list.len = list.len - 1;
-    return node;
+    return Some(node);
 }

@@ -55,14 +55,14 @@ bool blob_ensure_table() {
     return true;
 }
 
-// The slot `b` names, or -1.
-i32 blob_slot_of(Blob b) {
-    if (g_blob_rows == 0) { return -1; }
+// The row `b` names, or None when the handle is forged or stale.
+Option<BlobRow *> blob_live_row(Blob b) {
+    if (g_blob_rows == 0) { return None; }
     i32 slot = (b.id & 4095) - 1;
-    if (slot < 0 || slot >= BLOB_MAX) { return -1; }
+    if (slot < 0 || slot >= BLOB_MAX) { return None; }
     BlobRow *row = blob_row_at(slot);
-    if (!row->used || row->gen != ((b.id >> 12) & 0xFFFFF)) { return -1; }
-    return slot;
+    if (!row->used || row->gen != ((b.id >> 12) & 0xFFFFF)) { return None; }
+    return Some(row);
 }
 
 /** Makes a zeroed buffer of `cap` usable bytes.
@@ -114,23 +114,27 @@ export Option<Blob> blob_from(str text) {
 
 /** True when the handle names a live buffer. */
 @safe
-export bool (Blob b) is_live() { return blob_slot_of(b) >= 0; }
+export bool (Blob b) is_live() {
+    return case blob_live_row(b) of { Some(_) -> true; None -> false; };
+}
 
 /** Usable bytes, or zero for a dead handle. */
 @safe
 export i32 (Blob b) cap() {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return 0; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return 0; });
+    };
     return row->cap;
 }
 
 /** The byte at `index`, or zero outside the buffer. */
 @safe
 export i32 (Blob b) at(i32 index) {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return 0; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return 0; });
+    };
     if (index < 0 || index >= row->cap) { return 0; }
     char *bytes = (char *)row->address;
     return (i32)bytes[index] & 0xFF;
@@ -139,9 +143,10 @@ export i32 (Blob b) at(i32 index) {
 /** Stores a byte; outside the buffer it does nothing. */
 @safe
 export void (Blob b) put(i32 index, i32 value) {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return; });
+    };
     if (index < 0 || index >= row->cap) { return; }
     char *bytes = (char *)row->address;
     bytes[index] = (char)value;
@@ -150,9 +155,10 @@ export void (Blob b) put(i32 index, i32 value) {
 /** Replaces the contents with `text`, cut to the capacity. */
 @safe
 export i32 (Blob b) write(str text) {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return 0; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return 0; });
+    };
     char *bytes = (char *)row->address;
     i32 n = text.length;
     if (n > row->cap) { n = row->cap; }
@@ -165,9 +171,10 @@ export i32 (Blob b) write(str text) {
 /** The first `length` bytes, cut to the capacity, as a view. */
 @safe
 export str (Blob b) view(i32 length) {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return ""; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return ""; });
+    };
     i32 n = length;
     if (n < 0) { n = 0; }
     if (n > row->cap) { n = row->cap; }
@@ -177,9 +184,10 @@ export str (Blob b) view(i32 length) {
 /** The bytes before the first NUL as a view. */
 @safe
 export str (Blob b) as_str() {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return ""; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return ""; });
+    };
     char *bytes = (char *)row->address;
     i32 n = 0;
     while (n < row->cap && bytes[n] != 0) { n++; }
@@ -189,9 +197,10 @@ export str (Blob b) as_str() {
 /** Ends the handle. Its bytes are released by the next collect(). */
 @safe
 export void (Blob b) free() {
-    i32 slot = blob_slot_of(b);
-    if (slot < 0) { return; }
-    BlobRow *row = blob_row_at(slot);
+    BlobRow *row = case blob_live_row(b) of {
+        Some(found) -> found;
+        None -> ({ return; });
+    };
     row->used = false;
     row->freed = true;
     row->gen = (row->gen + 1) & 0xFFFFF;

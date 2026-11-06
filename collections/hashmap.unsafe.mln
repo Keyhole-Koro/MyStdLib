@@ -82,24 +82,26 @@ export bool (borrow HashMap<K, V> map) put<K: Hash + Eq, V>(move K key, move V v
  * Option. The map stays borrowed while the result is in scope.
  */
 export Option<borrow V> (borrow HashMap<K, V> map) get<K: Hash + Eq, V>(K *key) {
-    i32 slot = map.slot_of(key);
-    if (slot < 0) { return None; }
+    i32 slot = case map.slot_of(key) of {
+        Some(found) -> found;
+        None -> ({ return None; });
+    };
     return Some(&map.values[slot]);
 }
 
-/** The slot holding `key`, or -1 when the key is absent. */
-export i32 (HashMap<K, V> map) slot_of<K: Hash + Eq, V>(K *key) {
-    if (map.cap <= 0) { return -1; }
+/** The slot holding `key`, or None when the key is absent. */
+export Option<i32> (HashMap<K, V> map) slot_of<K: Hash + Eq, V>(K *key) {
+    if (map.cap <= 0) { return None; }
     i32 slot = (i32)(hash_key<K>(key) & (u32)(map.cap - 1));
     i32 checked = 0;
     while (checked < map.cap) {
-        if (map.used[slot] == 0) { return -1; }
-        if (map.keys[slot] == *key) { return slot; }
+        if (map.used[slot] == 0) { return None; }
+        if (map.keys[slot] == *key) { return Some(slot); }
         slot = slot + 1;
         if (slot >= map.cap) { slot = 0; }
         checked++;
     }
-    return -1;
+    return None;
 }
 
 /** One stored pair, borrowed from the map's storage. */

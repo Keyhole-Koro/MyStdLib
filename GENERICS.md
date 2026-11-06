@@ -23,7 +23,7 @@ i32 main() {
 | --- | --- |
 | `Slice<T>` | `init(data, len)`, `len()`, `at(i)` → `T *` or 0 |
 | `Vec<T>` | `init(storage, cap)`, `len()`, `push(v)` → bool, `pop(&out)` → bool, `at(i)` |
-| `Arena<T>` | `init(storage, cap)`, `reset()`, `alloc(count)` → `T *` or 0 |
+| `Arena<T>` | `init(storage, cap)`, `reset()`, `alloc(count)` → `Option<T *>` |
 | `RingBuffer<T>` | `init(storage, cap)`, `capacity()`, `count()`, `has()`, `full()`, `push(v)`, `pop(&out)`, `peek(&out)`, `clear()` |
 | `HashMap<K, V>` | `init(keys, values, used, cap)`, `put(key, v)` → bool, `get(&key, &out)` → bool |
 | `IntrusiveList<T>` | `init()`, `push_front(node, &node->next)`, `pop_front(&head->next)` |
