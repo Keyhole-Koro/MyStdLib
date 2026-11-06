@@ -52,7 +52,7 @@ Hosted modules:
 | module | role |
 | --- | --- |
 | `hosted/fs.mln` | `Result`-based filesystem client API |
-| `hosted/process.mln` | generic process client API; `spawn()` returns `Result<i32, SpawnError>` |
+| `hosted/process.mln` | generic process client API; `spawn()` returns `Result<Pid, SpawnError>` |
 | `hosted/log.mln` | hosted diagnostic output |
 | `platform/myos/syscall.masm` | MyOS syscall trap binding |
 
