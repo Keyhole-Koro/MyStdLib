@@ -167,19 +167,6 @@ export i32 (Blob b) write(str text) {
     return n;
 }
 
-/** The first `length` bytes, cut to the capacity, as a view. */
-@safe
-export str (Blob b) view(i32 length) {
-    BlobRow *row = case blob_live_row(b) of {
-        Some(found) -> found;
-        None -> ({ return ""; });
-    };
-    i32 n = length;
-    if (n < 0) { n = 0; }
-    if (n > row->cap) { n = row->cap; }
-    return str { data: (char *)row->address, length: n };
-}
-
 /** The bytes before the first NUL as a view. */
 @safe
 export str (Blob b) as_str() {
