@@ -2,7 +2,7 @@ package annotations;
 
 // The annotation metadata the compiler recorded, as an iterator over rows.
 //
-// `@name(args)` on a function or method is not a call: the compiler checks
+// `@name(args)` on a function, method or struct is not a call: the compiler checks
 // it against the imported prototype and writes one row into the module's
 // `annotations` section (toolchain/MyLangCompiler/docs/grammar.md,
 // "Attributes and annotations"). The linker joins every module's rows into
@@ -31,11 +31,10 @@ import mbin from "@std/format/mbin.mln";
 import str from "@std/text/str.mln";
 import { Text } from "@std/text/text.mln";
 
-/** One annotation row, stored as eight 32-bit words.
+/** One annotation row, stored as seven 32-bit words.
  * @property name Annotation identifier.
- * @property fn Address of the annotated function in its image.
+ * @property fn Address of the annotated function in its image, 0 on a struct.
  * @property type Receiver type name, or empty for a free function.
- * @property size Receiver type size, or zero for a free function.
  * @property argc Number of recorded arguments after defaults are applied.
  * @property a0 First argument encoded as an integer, bool, or string address.
  * @property a1 Second argument encoded as an integer, bool, or string address.
@@ -43,9 +42,8 @@ import { Text } from "@std/text/text.mln";
  */
 export struct AnnotationRow {
     char *name;      // the annotation's name
-    CodeAddress fn;  // the annotated function
+    CodeAddress fn;  // the annotated function; 0 on a struct
     char *type;      // receiver type's name; "" for a plain function
-    i32 size;        // sizeof that type; 0 for a plain function
     i32 argc;        // arguments given (defaults filled in)
     i32 a0;          // the arguments: a number, a bool as 0/1, or a char* as i32
     i32 a1;
@@ -259,14 +257,6 @@ export Result<CodeAddress, AnnotationError> (Annotations it) fn() {
 export Result<str, AnnotationError> (Annotations it) type() {
     if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
     return Ok(string_of(it, it.cur->type));
-}
-/** Get the current receiver type size.
- * @return Ok(type size), or Err(NoCurrentRow); free functions have size zero.
- */
-@safe
-export Result<i32, AnnotationError> (Annotations it) size() {
-    if (it.cur == 0) { return Err(AnnotationError::NoCurrentRow); }
-    return Ok(it.cur->size);
 }
 /** Get the current annotation's argument count.
  * @return Ok(argument count), or Err(NoCurrentRow) when there is no current row.
