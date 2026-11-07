@@ -7,8 +7,23 @@ import myos_service from "@std/platform/myos/service.mln";
 import { OsService } from "@contracts/myos/services.contract.mln";
 import { Result } from "@std/core/result.mln";
 import { SpawnError } from "@contracts/process/spawn.contract.mln";
-import { Pid, ProcessControlError, ProcessExitStatus } from "@contracts/process/control.contract.mln";
+import { SyscallFailure } from "@contracts/myos/syscall.contract.mln";
+import { Pid, ProcessControlError, ProcessControlStatus, ProcessExitStatus } from "@contracts/process/control.contract.mln";
 import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs } from "@contracts/myos/process-args.contract.mln";
+
+/** Reads a service that answers in its status word, as PROC_FEED does.
+ * @param pid Process the request named.
+ * @param reply What the service call returned.
+ * @return Ok(_), or Err(InvalidPid) when the OS refused or never answered.
+ */
+export Result<_, ProcessControlError> control_result(Pid pid, Result<i32, SyscallFailure> reply) {
+    bool accepted = case reply of {
+        Ok(word) -> word == (i32)ProcessControlStatus::Accepted;
+        Err(_) -> false;
+    };
+    if (accepted) { return Ok(_); }
+    return Err(ProcessControlError::InvalidPid(pid));
+}
 
 /** Start an executable process.
  * @param path Executable path.
@@ -55,9 +70,10 @@ export Result<ProcessExitStatus, ProcessControlError> reap(Pid pid) {
 /** Send an input line to a process.
  * @param pid Recipient process ID.
  * @param line Line to deliver.
+ * @return Ok(_), or Err(InvalidPid) when pid names no child of this process.
  */
 @safe
-export void feed_line(Pid pid, str line) {
+export Result<_, ProcessControlError> feed_line(Pid pid, str line) {
     ProcFeedArgs args = ProcFeedArgs { pid: (i32)pid, line: line.data, line_length: line.length };
-    myos_service.call(OsService::PROC_FEED, (i32)(&args));
+    return control_result(pid, myos_service.call(OsService::PROC_FEED, (i32)(&args)));
 }
