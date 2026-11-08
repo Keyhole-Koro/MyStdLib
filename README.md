@@ -88,11 +88,13 @@ the stored byte length and therefore also handles embedded NULs. Use
 `as_c_str()` explicitly for an arbitrary view; only literals retain the old
 implicit conversion to `char*`/`char[]`.
 
-`text/inline_string.mln` provides a fixed-capacity, allocation-free owned
-string. `N` is the full byte capacity: contents are length-aware and do not
-reserve a NUL slot. Appends are atomic and return false without changing the
-value when the complete input does not fit. A named struct literal supplies
-the empty zero value, so no separate initialization call is needed.
+`text/text.mln` provides `Text<N>`, a fixed-capacity, allocation-free owned
+string. `N` is the size of its inline buffer in bytes, one of which always
+holds a NUL after the text: a `Text<N>` holds up to N - 1 bytes and can be
+handed to a `char *` API with `as_ptr()`, so embedded NUL is rejected.
+`append` and `push` are atomic and return false without changing the value
+when the complete input does not fit. A named struct literal supplies the
+empty zero value, so no separate initialization call is needed.
 
 ```mln
 import str from "text/str.mln";
