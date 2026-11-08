@@ -19,13 +19,6 @@ export struct Text<const N> {
     i32 length;
 };
 
-/** Make the text empty. A zero value already is; this is for reuse. */
-@safe
-export void (borrow Text<N> self) init() {
-    self.length = 0;
-    self.data[0] = (char)0;
-}
-
 /** Return the number of text bytes, excluding the terminator. */
 @safe
 export i32 (Text<N> self) len() { return self.length; }
