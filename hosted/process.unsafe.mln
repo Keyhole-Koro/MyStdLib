@@ -9,7 +9,7 @@ import { Result } from "@std/core/result.mln";
 import { SpawnError } from "@contracts/process/spawn.contract.mln";
 import { SyscallFailure } from "@contracts/myos/syscall.contract.mln";
 import { Pid, ProcessControlError, ProcessControlStatus, ProcessExitStatus } from "@contracts/process/control.contract.mln";
-import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs } from "@contracts/myos/process-args.contract.mln";
+import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs, ProcStatsArgs, ProcStats, ProcInfo, CpuTimes, ProcActivity } from "@contracts/myos/process-args.contract.mln";
 
 /** Reads a service that answers in its status word, as PROC_FEED does.
  * @param pid Process the request named.
@@ -76,4 +76,17 @@ export Result<ProcessExitStatus, ProcessControlError> reap(Pid pid) {
 export Result<_, ProcessControlError> feed_line(Pid pid, str line) {
     ProcFeedArgs args = ProcFeedArgs { pid: (i32)pid, line: line.data, line_length: line.length };
     return control_result(pid, myos_service.call(OsService::PROC_FEED, (i32)(&args)));
+}
+
+/** Read every process, what it is doing and what it costs, and where the
+ * CPU's time went. Any process may ask, about every process: it changes nothing.
+ * @return The numbers. Times are timer ticks since boot; compare two readings
+ *         to see what share of the time between them each one took.
+ */
+@safe
+export ProcStats stats() {
+    ProcStats result = ProcStats {};
+    ProcStatsArgs args = ProcStatsArgs { result_out: &result };
+    myos_service.call(OsService::PROC_STATS, (i32)(&args));
+    return result;
 }
