@@ -25,8 +25,9 @@ export Result<_, ProcessControlError> control_result(Pid pid, Result<i32, Syscal
     return Err(ProcessControlError::InvalidPid(pid));
 }
 
-/** Start an executable process.
- * @param path Executable path.
+/** Start an executable process, as a child of this one. It writes where this
+ * process writes, and on a terminal it takes the lines typed there until it ends.
+ * @param path Executable path, or a name looked up in /bin then /apps.
  * @return New process ID, or the detailed spawn error.
  */
 @safe
