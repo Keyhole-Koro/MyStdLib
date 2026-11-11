@@ -7,7 +7,8 @@ import myos_service from "@std/platform/myos/service.mln";
 import { OsService } from "@contracts/myos/services.contract.mln";
 import { Result } from "@std/core/result.mln";
 import { SpawnError } from "@contracts/process/spawn.contract.mln";
-import { SyscallFailure } from "@contracts/myos/syscall.contract.mln";
+import { SyscallFailure, ProcessSignal } from "@contracts/myos/syscall.contract.mln";
+import { sys_wait_notification } from "@std/platform/myos/syscall.masm";
 import { Pid, ProcessControlError, ProcessControlStatus, ProcessExitStatus } from "@contracts/process/control.contract.mln";
 import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs, ProcStatsArgs, ProcStats, ProcInfo, CpuTimes, ProcActivity } from "@contracts/myos/process-args.contract.mln";
 
@@ -66,6 +67,20 @@ export Result<ProcessExitStatus, ProcessControlError> reap(Pid pid) {
     };
     myos_service.call(OsService::PROC_REAP, (i32)(&args));
     return result;
+}
+
+/** Waits for a child to end, then reaps it. The thread sleeps meanwhile: an
+ * unfinished has_exited arms ProcessSignal::CHILD, and the child's end raises it.
+ * @param pid The child.
+ * @return Its exit status, or Err(InvalidPid) when pid names no child of this process.
+ */
+@safe
+export Result<ProcessExitStatus, ProcessControlError> wait(Pid pid) {
+    while (!has_exited(pid)?) {
+        i32 woken = 0;
+        sys_wait_notification(ProcessSignal::CHILD, &woken);
+    }
+    return reap(pid);
 }
 
 /** Send an input line to a process.
