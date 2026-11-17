@@ -10,7 +10,9 @@ import { SpawnError } from "@contracts/process/spawn.contract.mln";
 import { SyscallFailure, ProcessSignal } from "@contracts/myos/syscall.contract.mln";
 import { sys_wait_notification } from "@std/platform/myos/syscall.masm";
 import { Pid, ProcessControlError, ProcessControlStatus, ProcessExitStatus } from "@contracts/process/control.contract.mln";
-import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs, ProcStatsArgs, ProcStats, ProcInfo, CpuTimes, ProcActivity } from "@contracts/myos/process-args.contract.mln";
+import { ProcSpawnArgs, ProcExitedArgs, ProcReapArgs, ProcFeedArgs, ProcStatsArgs, ProcStats, ProcInfo, CpuTimes, ProcActivity, ProcArgsArgs } from "@contracts/myos/process-args.contract.mln";
+import myos_process_args from "@contracts/myos/process-args.contract.mln";
+import { Text } from "@std/text/text.mln";
 
 /** Reads a service that answers in its status word, as PROC_FEED does.
  * @param pid Process the request named.
@@ -32,13 +34,43 @@ export Result<_, ProcessControlError> control_result(Pid pid, Result<i32, Syscal
  * @return New process ID, or the detailed spawn error.
  */
 @safe
-export Result<Pid, SpawnError> spawn(str path) {
+export Result<Pid, SpawnError> spawn(str path) { return spawn_with(path, ""); }
+
+/** Start an executable process with arguments, as spawn does.
+ * @param path Executable path, or a name looked up in /bin then /apps.
+ * @param arguments What it reads with args(): the rest of a command line.
+ * @return New process ID, or the detailed spawn error.
+ */
+@safe
+export Result<Pid, SpawnError> spawn_with(str path, str arguments) {
     Result<Pid, SpawnError> result;
     ProcSpawnArgs<Result<Pid, SpawnError>> args = ProcSpawnArgs<Result<Pid, SpawnError>> {
-        path: path.data, path_length: path.length, stdout_node: 0, result_out: &result
+        path: path.data, path_length: path.length, args: arguments.data, args_length: arguments.length,
+        stdout_node: 0, result_out: &result
     };
     myos_service.call(OsService::PROC_SPAWN, (i32)(&args));
     return result;
+}
+
+/** What this process was started with after its name, e.g. "hello" for
+ * `echo hello` typed in sh; empty for nothing.
+ * @return The arguments, at most ARGS_MAX bytes.
+ */
+@safe
+export Text<128> args() {
+    Text<128> text = Text<128> {};
+    char buffer[128];
+    ProcArgsArgs request = ProcArgsArgs { out: &buffer[0], capacity: myos_process_args.ARGS_MAX };
+    i32 length = case myos_service.call(OsService::PROC_ARGS, (i32)(&request)) of {
+        Ok(value) -> value;
+        Err(_) -> 0;
+    };
+    i32 i = 0;
+    while (i < length) {
+        text.push((u8)buffer[i]);
+        i++;
+    }
+    return text;
 }
 
 /** Check whether a process has exited.
