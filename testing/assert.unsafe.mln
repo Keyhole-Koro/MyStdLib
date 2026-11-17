@@ -1,4 +1,4 @@
-package assert;
+namespace assert;
 
 import str from "@std/text/str.mln";
 import bytes from "@std/text/bytes.mln";

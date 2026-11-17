@@ -1,4 +1,4 @@
-package string;
+namespace string;
 
 import allocator from "@std/memory/allocator.mln";
 import { Result } from "@std/core/result.mln";

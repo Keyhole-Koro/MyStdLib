@@ -1,4 +1,4 @@
-package int32;
+namespace int32;
 
 /** Smallest signed 32-bit integer. */
 export const i32 MIN = -2147483647 - 1;

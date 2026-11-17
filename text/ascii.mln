@@ -1,4 +1,4 @@
-package ascii;
+namespace ascii;
 
 import bytes from "bytes.mln";
 

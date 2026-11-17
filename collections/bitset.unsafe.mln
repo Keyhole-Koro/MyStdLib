@@ -1,4 +1,4 @@
-package bitset;
+namespace bitset;
 
 import { Option } from "@std/core/option.mln";
 import bytes from "@std/text/bytes.mln";

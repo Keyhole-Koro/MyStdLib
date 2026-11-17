@@ -1,4 +1,4 @@
-package atomic;
+namespace atomic;
 
 import {
     atomic_load_word,

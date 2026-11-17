@@ -1,4 +1,4 @@
-package text;
+namespace text;
 
 /** Fixed-capacity text stored entirely inside the value; it never allocates.
  *

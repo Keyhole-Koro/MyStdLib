@@ -1,4 +1,4 @@
-package condvar;
+namespace condvar;
 
 import { Atomic } from "atomic.mln";
 import { Mutex } from "mutex.mln";

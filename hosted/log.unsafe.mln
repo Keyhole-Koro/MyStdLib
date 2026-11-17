@@ -1,4 +1,4 @@
-package hosted_log;
+namespace hosted_log;
 
 import myos_service from "@std/platform/myos/service.mln";
 import { OsService, LogArgs } from "@contracts/myos/services.contract.mln";

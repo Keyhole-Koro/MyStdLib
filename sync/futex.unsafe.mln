@@ -1,4 +1,4 @@
-package futex;
+namespace futex;
 
 import { Result } from "@std/core/result.mln";
 import { ThreadError } from "@contracts/process/thread.contract.mln";

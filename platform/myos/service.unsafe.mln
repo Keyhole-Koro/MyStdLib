@@ -1,4 +1,4 @@
-package myos_service;
+namespace myos_service;
 
 import { Result } from "@std/core/result.mln";
 import { SyscallStatus, SyscallFailure } from "@contracts/myos/syscall.contract.mln";

@@ -1,4 +1,4 @@
-package address;
+namespace address;
 
 /** A machine address naming executable code. */
 export newtype CodeAddress = i32;

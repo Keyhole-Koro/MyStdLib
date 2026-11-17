@@ -1,4 +1,4 @@
-package fs;
+namespace fs;
 
 // Filesystem API for a hosted MyLang program. This is the client side of
 // MyOS's filesystem service, not the filesystem implementation.

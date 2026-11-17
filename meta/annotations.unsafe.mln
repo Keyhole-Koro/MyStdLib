@@ -1,4 +1,4 @@
-package annotations;
+namespace annotations;
 
 // The annotation metadata the compiler recorded, as an iterator over rows.
 //

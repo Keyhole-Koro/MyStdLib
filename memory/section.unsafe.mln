@@ -1,4 +1,4 @@
-package section;
+namespace section;
 
 // Linker-collected sections, looked up by name.
 //

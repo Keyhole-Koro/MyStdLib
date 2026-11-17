@@ -1,4 +1,4 @@
-package mutex;
+namespace mutex;
 
 import { Atomic } from "atomic.mln";
 import { MutexState } from "@contracts/sync/futex.contract.mln";

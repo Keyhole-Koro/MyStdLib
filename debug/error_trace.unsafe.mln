@@ -1,4 +1,4 @@
-package error_trace;
+namespace error_trace;
 
 // Error return trace (MLC-022). A program compiled with `mlc --error-trace`
 // calls note() at every `return Err(...)` (the origin, which starts a new

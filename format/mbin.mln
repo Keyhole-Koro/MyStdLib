@@ -1,4 +1,4 @@
-package mbin;
+namespace mbin;
 
 // Reading an MBIN executable image from a buffer -- a file loaded from
 // disk, not a mapped process (toolchain/MyLinker/inc/ObjectFormat.h,

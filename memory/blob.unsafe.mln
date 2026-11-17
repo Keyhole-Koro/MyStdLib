@@ -1,4 +1,4 @@
-package blob;
+namespace blob;
 
 import allocator from "allocator.mln";
 import { Option } from "@std/core/option.mln";

@@ -1,4 +1,4 @@
-package bytes;
+namespace bytes;
 
 import { Option } from "@std/core/option.mln";
 

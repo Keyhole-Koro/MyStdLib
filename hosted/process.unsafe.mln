@@ -1,4 +1,4 @@
-package process;
+namespace process;
 
 // Generic process control for hosted MyLang programs. UI-specific stdout
 // binding remains in MyAppFramework's terminal integration.
