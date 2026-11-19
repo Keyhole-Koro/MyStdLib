@@ -1,0 +1,144 @@
+import str from "@std/text/str.mln";
+import { Option } from "@std/core/option.mln";
+import mbin from "@std/format/mbin.mln";
+import assert from "@std/testing/assert.mln";
+import { assert_eq } from "@std/testing/assert.mln";
+
+// format/mbin reads executables loaded from disk, so a damaged header must
+// give an answer from inside the view, never a read outside it or a loop
+// that does not end.
+//
+// The image is MBIN version 2 with a 256-byte text segment at va 0x1000
+// (file offset 0), so va 0x1000 + x is file offset x, and an empty data
+// segment at va 0x2000. Its section directory at offset 64 has one row,
+// `annotations` at va 0x1000 + 160, 28 bytes, named by the string at 128.
+
+const i32 NONE = 0 - 999;
+
+char g_image[256];
+
+void put_be32(i32 at, i32 value) {
+    g_image[at] = (char)((value >> 24) & 0xFF);
+    g_image[at + 1] = (char)((value >> 16) & 0xFF);
+    g_image[at + 2] = (char)((value >> 8) & 0xFF);
+    g_image[at + 3] = (char)(value & 0xFF);
+}
+
+void build_image() {
+    i32 i = 0;
+    while (i < 256) { g_image[i] = (char)0; i++; }
+    put_be32(0, 0x4D42494E);   // magic
+    put_be32(4, 2);            // version with a section directory
+    put_be32(8, 0x1000);       // entry: text at va 0x1000
+    put_be32(12, 0);           // text offset
+    put_be32(16, 256);         // text size
+    put_be32(32, 64);          // section directory offset
+    put_be32(64, 0x1000 + 128);
+    put_be32(68, 0x1000 + 160);
+    put_be32(72, 28);
+    char *name = "annotations";
+    i = 0;
+    while (name[i] != 0) { g_image[128 + i] = name[i]; i++; }
+}
+
+str image_of(i32 length) {
+    return str { data: &g_image[0], length: length };
+}
+
+i32 value_or_none(Option<i32> value) {
+    return case value of {
+        Some(v) -> v;
+        None -> NONE;
+    };
+}
+
+/*@Test "mbin.is_image wants the magic and a whole header" {
+    step: 50000000;
+}*/
+void is_image_checks() {
+    build_image();
+    assert_eq<bool>(mbin.is_image(image_of(256)), true, "a valid image");
+    assert_eq<bool>(mbin.is_image(image_of(31)), false, "a buffer shorter than the header");
+    assert_eq<bool>(mbin.is_image(""), false, "an empty buffer");
+    g_image[3] = (char)0x58;
+    assert_eq<bool>(mbin.is_image(image_of(256)), false, "a buffer with the wrong magic");
+}
+
+/*@Test "mbin.va_to_offset maps only addresses inside a segment" {
+    step: 50000000;
+}*/
+void va_to_offset_bounds() {
+    build_image();
+    put_be32(20, 100);         // data offset
+    put_be32(24, 16);          // data size
+    str image = image_of(256);
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0x1000)), 0, "first text byte");
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0x1000 + 255)), 255, "last text byte");
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0x1000 + 256)), NONE, "one past the text");
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0x0FFF)), NONE, "one before the text");
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0x2000 + 4)), 104, "inside the data");
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0x2000 + 16)), NONE, "one past the data");
+    assert_eq<i32>(value_or_none(mbin.va_to_offset(image, 0)), NONE, "address zero");
+}
+
+/*@Test "mbin.string_at stops at the end of the view" {
+    step: 50000000;
+}*/
+void string_at_without_nul() {
+    build_image();
+    char *tail = "abcdef";
+    i32 i = 0;
+    while (i < 6) { g_image[250 + i] = tail[i]; i++; }
+    str image = image_of(256);
+    bool found = case mbin.string_at(image, 0x1000 + 250) of {
+        Some(text) -> ({ assert.assert_str_eq(text, "abcdef", "string cut at the view end"); true; });
+        None -> false;
+    };
+    assert_eq<bool>(found, true, "a string that runs to the end is still found");
+    bool outside = case mbin.string_at(image, 0x1000 + 256) of {
+        Some(_) -> true;
+        None -> false;
+    };
+    assert_eq<bool>(outside, false, "a string outside every segment");
+    found = case mbin.string_at(image, 0x1000 + 128) of {
+        Some(text) -> ({ assert.assert_str_eq(text, "annotations", "string ends at its NUL"); true; });
+        None -> false;
+    };
+    assert_eq<bool>(found, true, "a terminated string");
+}
+
+/*@Test "mbin finds a present section and not an absent one" {
+    step: 50000000;
+}*/
+void section_present_and_absent() {
+    build_image();
+    str image = image_of(256);
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "annotations")), 160, "section offset");
+    assert_eq<i32>(value_or_none(mbin.section_size(image, "annotations")), 28, "section size");
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "other")), NONE, "absent section offset");
+    assert_eq<i32>(value_or_none(mbin.section_size(image, "other")), NONE, "absent section size");
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "annotation")), NONE, "a prefix is not a match");
+
+    put_be32(4, 1);            // version 1 has no directory
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "annotations")), NONE, "version 1 offset");
+    assert_eq<i32>(value_or_none(mbin.section_size(image, "annotations")), NONE, "version 1 size");
+}
+
+/*@Test "mbin stops at a directory that runs off the image" {
+    step: 50000000;
+}*/
+void directory_past_the_end() {
+    build_image();
+    // Rows of non-zero words up to the last byte: no zero row ends them.
+    put_be32(32, 232);
+    i32 i = 232;
+    while (i < 256) { g_image[i] = (char)1; i++; }
+    str image = image_of(256);
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "annotations")), NONE, "unterminated directory offset");
+    assert_eq<i32>(value_or_none(mbin.section_size(image, "annotations")), NONE, "unterminated directory size");
+
+    put_be32(32, 0x7FFFFFF0);  // directory far past the end
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "annotations")), NONE, "directory past the end");
+    put_be32(32, 0 - 12);      // directory before the start
+    assert_eq<i32>(value_or_none(mbin.section_offset(image, "annotations")), NONE, "directory before the start");
+}
