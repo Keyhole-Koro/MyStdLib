@@ -46,12 +46,12 @@ export void (borrow Text<N> self) clear() {
 
 /** Append a complete string view.
  * @param value Bytes to append. Embedded NUL is rejected because the text
- * must stay a valid C string.
+ * must stay a valid C string, and so is a view with a negative length.
  * @return True on success; false leaves self unchanged.
  */
 @safe
 export bool (borrow Text<N> self) append(str value) {
-    if (value.length > self.remaining()) { return false; }
+    if (value.length < 0 || value.length > self.remaining()) { return false; }
     i32 i = 0;
     while (i < value.length) {
         if (value.data[i] == 0) { return false; }
