@@ -1,0 +1,92 @@
+import str from "@std/text/str.mln";
+import annotations from "@std/meta/annotations.mln";
+import { Annotations } from "@std/meta/annotations.mln";
+import { assert_eq } from "@std/testing/assert.mln";
+
+// annotations.in_image() reads rows from a file a shell loaded from disk, so
+// the header and section directory are untrusted: the rows it yields must lie
+// inside the image buffer whatever they claim.
+//
+// The image below is MBIN version 2 with a 256-byte text segment at va
+// 0x1000 (file offset 0), so va 0x1000 + x is file offset x. Its section
+// directory at offset 64 has one row, `annotations`, whose name string sits
+// at offset 128.
+
+char g_image[256];
+// Filled with non-zero bytes so rows read from past the image would count.
+i32 g_guard[512];
+
+void put_be32(i32 at, i32 value) {
+    g_image[at] = (char)((value >> 24) & 0xFF);
+    g_image[at + 1] = (char)((value >> 16) & 0xFF);
+    g_image[at + 2] = (char)((value >> 8) & 0xFF);
+    g_image[at + 3] = (char)(value & 0xFF);
+}
+
+void build_image(i32 section_va, i32 section_size) {
+    i32 i = 0;
+    while (i < 256) { g_image[i] = (char)0; i++; }
+    put_be32(0, 0x4D42494E);   // magic
+    put_be32(4, 2);            // version with a section directory
+    put_be32(8, 0x1000);       // entry: text at va 0x1000
+    put_be32(12, 0);           // text offset
+    put_be32(16, 256);         // text size
+    put_be32(32, 64);          // section directory offset
+    put_be32(64, 0x1000 + 128);        // name
+    put_be32(68, section_va);          // start
+    put_be32(72, section_size);        // size
+    char *name = "annotations";
+    i = 0;
+    while (name[i] != 0) { g_image[128 + i] = name[i]; i++; }
+}
+
+i32 rows_seen(str image) {
+    Annotations it = annotations.in_image(image);
+    i32 n = 0;
+    while (it.next() && n < 100000) { n++; }
+    return n;
+}
+
+/*@Test "in_image cuts an oversized section to the image" {
+    step: 200000000;
+}*/
+void oversized_section() {
+    i32 g = 0;
+    while (g < 512) { g_guard[g] = 0x41414141; g++; }
+    build_image(0x1000 + 160, 28 * 1000);
+    str image = str { data: &g_image[0], length: 256 };
+    // (256 - 160) / 28 = 3 rows fit inside the buffer.
+    assert_eq<i32>(rows_seen(image), 3, "in_image read rows past the end of the image");
+}
+
+/*@Test "in_image ignores a section before the image" {
+    step: 200000000;
+}*/
+void section_before_image() {
+    build_image(0x1000 + 160, 28);
+    // A data segment whose file offset is negative, holding the section.
+    put_be32(20, 0 - 4096);    // data offset
+    put_be32(24, 4096);        // data size
+    put_be32(68, 0x2000);      // start: data va = text va + page_up(256)
+    str image = str { data: &g_image[0], length: 256 };
+    assert_eq<i32>(rows_seen(image), 0, "in_image read rows before the start of the image");
+}
+
+/*@Test "in_image reads a valid row" {
+    step: 200000000;
+}*/
+void valid_row() {
+    build_image(0x1000 + 160, 28);
+    str image = str { data: &g_image[0], length: 256 };
+    assert_eq<i32>(rows_seen(image), 1, "in_image should read the one row inside the image");
+}
+
+/*@Test "in_image reads nothing from an image without the section" {
+    step: 200000000;
+}*/
+void absent_section() {
+    build_image(0x1000 + 160, 28);
+    put_be32(64, 0);           // directory ends at once
+    str image = str { data: &g_image[0], length: 256 };
+    assert_eq<i32>(rows_seen(image), 0, "in_image found a section the directory lacks");
+}
