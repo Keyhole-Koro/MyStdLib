@@ -1,0 +1,40 @@
+import assert from "@std/testing/assert.mln";
+import mock from "../../MyLangTestKit/runtime/facade.mln";
+import process from "@std/hosted/process.mln";
+import myos_service from "@std/platform/myos/service.mln";
+import { OsService } from "@contracts/myos/services.contract.mln";
+import { SyscallFailure, SyscallStatus } from "@contracts/myos/syscall.contract.mln";
+import { Pid } from "@contracts/process/control.contract.mln";
+import { SpawnError } from "@contracts/process/spawn.contract.mln";
+import { Result } from "@std/core/result.mln";
+
+// spawn_with's answer comes back through the record's result_out, which the
+// OS writes only when it takes the call. A call it refuses -- BadAddress for
+// a path or arguments that are not the caller's memory, UnknownService with
+// no OS -- leaves it unwritten, and the spawn must still be an error.
+
+i32 g_service = 0;
+
+// The kernel refused the call: the OS never read the record.
+Result<i32, SyscallFailure> refused_call(i32 service, i32 args) {
+    g_service = service;
+    return Err(SyscallFailure { status: SyscallStatus::BadAddress, payload: args });
+}
+
+// What a stack frame left behind: a Result that reads as Ok(7).
+Pid leave_an_answer_on_the_stack() {
+    Result<Pid, SpawnError> answer = Ok(Pid(7));
+    return answer.unwrap_or(Pid(0));
+}
+
+/*@Test "a spawn the OS refused is an error" { step: 5000000; }*/
+void a_spawn_the_os_refused_is_an_error() {
+    mock.of(myos_service.call).when(mock.any(), mock.any()).call(refused_call);
+    leave_an_answer_on_the_stack();
+    Result<Pid, SpawnError> spawned = process.spawn_with("hello", "world");
+    assert.assert_true(g_service == OsService::PROC_SPAWN, "spawn_with names the service");
+    assert.assert_true(spawned.is_err(), "a spawn the OS never answered is an error");
+
+    leave_an_answer_on_the_stack();
+    assert.assert_true(process.spawn("hello").is_err(), "and so is the plain spawn");
+}

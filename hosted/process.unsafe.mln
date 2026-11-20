@@ -43,7 +43,9 @@ export Result<Pid, SpawnError> spawn(str path) { return spawn_with(path, ""); }
  */
 @safe
 export Result<Pid, SpawnError> spawn_with(str path, str arguments) {
-    Result<Pid, SpawnError> result;
+    // The OS writes the answer only when it takes the call, so a failed call
+    // leaves this error.
+    Result<Pid, SpawnError> result = Err(SpawnError::NoHandler);
     ProcSpawnArgs<Result<Pid, SpawnError>> args = ProcSpawnArgs<Result<Pid, SpawnError>> {
         path: path.data, path_length: path.length, args: arguments.data, args_length: arguments.length,
         stdout_node: 0, result_out: &result
