@@ -6,7 +6,7 @@ importing the type is all it takes -- its methods come with it, and there
 is no per-function import and no explicit `<T>` at the call site.
 
 ```mln
-import { Vec } from "collections/vec.mln";
+import { Vec } from "@std/collections/vec.mln";
 
 i32 main() {
     i32 storage[8];
@@ -21,12 +21,12 @@ i32 main() {
 
 | Type | Methods |
 | --- | --- |
-| `Slice<T>` | `init(data, len)`, `len()`, `at(i)` → `T *` or 0 |
-| `Vec<T>` | `init(storage, cap)`, `len()`, `push(v)` → bool, `pop(&out)` → bool, `at(i)` |
+| `Slice<T>` | `init(data, len)`, `len()`, `at(i)` → `Option<borrow T>` (None out of range), `iter()` |
+| `Vec<T>` | `init(storage, cap)`, `len()`, `push(v)` → bool, `pop(&out)` → bool, `at(i)` → `Option<borrow T>`, `iter()` |
 | `Arena<T>` | `init(storage, cap)`, `reset()`, `alloc(count)` → `Option<T *>` |
-| `RingBuffer<T>` | `init(storage, cap)`, `capacity()`, `count()`, `has()`, `full()`, `push(v)`, `pop(&out)`, `peek(&out)`, `clear()` |
-| `HashMap<K, V>` | `init(keys, values, used, cap)`, `put(key, v)` → bool, `get(&key, &out)` → bool |
-| `IntrusiveList<T>` | `init()`, `push_front(node, &node->next)`, `pop_front(&head->next)` |
+| `RingBuffer<T>` | `init(storage, cap)`, `capacity()`, `count()`, `has()`, `full()`, `push(v)` → bool, `pop(&out)` → bool, `peek(&out)` → bool, `clear()`, `drain()` |
+| `HashMap<K, V>` | `init(keys, values, used, cap)`, `put(key, v)` → bool, `get(&key)` → `Option<borrow V>` (None when absent), `entries()` |
+| `IntrusiveList<T>` | `init()`, `push_front(node, &node->next)`, `pop_front(&head->next)` → `Option<T *>` |
 
 | Module | Contents |
 | --- | --- |
@@ -48,7 +48,8 @@ are real payload enums built with `Some(value)` / `None` and `Ok(value)` /
 `HashMap<K, V>` maps keys implementing `Hash + Eq` to `V` values with
 caller-provided key, value, and `u8` occupancy arrays. It has insertion,
 replacement, and lookup but not deletion or automatic growth. Its capacity must be
-a power of two. The separate occupancy array means zero remains a valid key.
+a power of two; any other capacity leaves the map disabled, so `put` returns
+false and `get` finds nothing. The separate occupancy array means zero remains a valid key.
 `put` takes ownership of keys and values that cannot be copied; `get` reads its key through
 a non-owning pointer.
 

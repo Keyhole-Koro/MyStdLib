@@ -1,0 +1,133 @@
+import { Option } from "@std/core/option.mln";
+import { Eq } from "@std/core/cmp.mln";
+import { Hash } from "@std/core/hash.mln";
+import { HashMap, MapEntry } from "@std/collections/hashmap.mln";
+import assert from "@std/testing/assert.mln";
+import { assert_eq } from "@std/testing/assert.mln";
+
+// HashMap<i32, i32> hashes a key to itself, so with cap 4 key k starts at
+// slot k & 3 and the probe order below is known.
+
+const i32 ABSENT = 0 - 1;
+
+i32 value_of(borrow HashMap<i32, i32> map, i32 key) {
+    i32 absent = ABSENT;
+    return map.get(&key).unwrap_or(&absent);
+}
+
+/*@Test "HashMap keeps zero as a key and replaces values" {
+    step: 50000000;
+}*/
+void zero_key_and_replace() {
+    i32 keys[4];
+    i32 values[4];
+    u8 used[4];
+    HashMap<i32, i32> map;
+    map.init(&keys[0], &values[0], &used[0], 4);
+    assert_eq<i32>(value_of(&map, 0), ABSENT, "an empty map has no zero key");
+    assert_eq<bool>(map.put(0, 10), true, "put zero");
+    assert_eq<i32>(value_of(&map, 0), 10, "zero is a valid key");
+    assert_eq<bool>(map.put(0, 11), true, "replace zero");
+    assert_eq<i32>(value_of(&map, 0), 11, "replace keeps the newest value");
+    assert_eq<i32>(map.len, 1, "replace does not add a pair");
+    assert_eq<i32>(value_of(&map, 2), ABSENT, "a missing key");
+}
+
+/*@Test "HashMap probes past the last slot to the first" {
+    step: 50000000;
+}*/
+void wrap_around() {
+    i32 keys[4];
+    i32 values[4];
+    u8 used[4];
+    HashMap<i32, i32> map;
+    map.init(&keys[0], &values[0], &used[0], 4);
+    map.put(3, 30);            // slot 3
+    map.put(7, 70);            // slot 3 taken: wraps to slot 0
+    map.put(11, 110);          // slots 3 and 0 taken: slot 1
+    assert_eq<i32>(value_of(&map, 3), 30, "home slot");
+    assert_eq<i32>(value_of(&map, 7), 70, "one wrap");
+    assert_eq<i32>(value_of(&map, 11), 110, "wrap and probe");
+    assert_eq<i32>(value_of(&map, 15), ABSENT, "a missing key whose probe wraps");
+    assert_eq<i32>((i32)used[0], 1, "the wrapped key took slot 0");
+    assert_eq<i32>(keys[0], 7, "slot 0 holds key 7");
+    assert_eq<i32>(keys[1], 11, "slot 1 holds key 11");
+}
+
+/*@Test "HashMap refuses a new key when full" {
+    step: 50000000;
+}*/
+void full_map() {
+    i32 keys[4];
+    i32 values[4];
+    u8 used[4];
+    HashMap<i32, i32> map;
+    map.init(&keys[0], &values[0], &used[0], 4);
+    i32 k = 0;
+    while (k < 4) {
+        assert_eq<bool>(map.put(k * 4, k), true, "fill the map");
+        k++;
+    }
+    assert_eq<bool>(map.put(99, 9), false, "a new key does not fit");
+    assert_eq<i32>(map.len, 4, "a refused put adds nothing");
+    assert_eq<i32>(value_of(&map, 99), ABSENT, "a refused key is absent");
+    assert_eq<bool>(map.put(8, 80), true, "an existing key is still replaced");
+    assert_eq<i32>(value_of(&map, 8), 80, "replaced in a full map");
+    assert_eq<i32>(value_of(&map, 12), 3, "the last key put");
+}
+
+/*@Test "HashMap with a capacity that is not a power of two is disabled" {
+    step: 50000000;
+}*/
+void bad_capacity() {
+    i32 keys[6];
+    i32 values[6];
+    u8 used[6];
+    HashMap<i32, i32> map;
+    map.init(&keys[0], &values[0], &used[0], 6);
+    assert_eq<i32>(map.cap, 0, "cap 6 disables the map");
+    assert_eq<bool>(map.put(1, 1), false, "a disabled map takes nothing");
+    assert_eq<i32>(value_of(&map, 1), ABSENT, "a disabled map finds nothing");
+    assert_eq<i32>(map.len, 0, "a disabled map stays empty");
+
+    map.init(&keys[0], &values[0], &used[0], 0);
+    assert_eq<i32>(map.cap, 0, "cap 0 disables the map");
+    map.init(&keys[0], &values[0], &used[0], 0 - 4);
+    assert_eq<i32>(map.cap, 0, "a negative cap disables the map");
+    assert_eq<bool>(map.put(1, 1), false, "a negative cap takes nothing");
+}
+
+/*@Test "HashMap.entries visits every stored pair once" {
+    step: 50000000;
+}*/
+void entries_visit_all() {
+    i32 keys[8];
+    i32 values[8];
+    u8 used[8];
+    HashMap<i32, i32> map;
+    map.init(&keys[0], &values[0], &used[0], 8);
+    map.put(0, 1);
+    map.put(5, 2);
+    map.put(13, 4);            // collides with 5
+    map.put(7, 8);
+    i32 count = 0;
+    i32 key_sum = 0;
+    i32 value_bits = 0;
+    for (MapEntry<i32, i32> e in map.entries()) {
+        count++;
+        key_sum = key_sum + *e.key;
+        value_bits = value_bits | *e.value;
+    }
+    assert_eq<i32>(count, 4, "every pair once");
+    assert_eq<i32>(key_sum, 25, "every key");
+    assert_eq<i32>(value_bits, 15, "every value");
+
+    i32 ekeys[2];
+    i32 evalues[2];
+    u8 eused[2];
+    HashMap<i32, i32> empty;
+    empty.init(&ekeys[0], &evalues[0], &eused[0], 2);
+    count = 0;
+    for (MapEntry<i32, i32> e in empty.entries()) { count++; }
+    assert_eq<i32>(count, 0, "an empty map has no entries");
+}

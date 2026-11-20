@@ -151,13 +151,17 @@ export void (Blob b) put(i32 index, i32 value) {
     bytes[index] = (char)value;
 }
 
-/** Replaces the contents with `text`, cut to the capacity. */
+/** Replaces the contents with `text`, cut to the capacity. A view with a
+ * negative length changes nothing.
+ * @return Bytes written.
+ */
 @safe
 export i32 (Blob b) write(str text) {
     BlobRow *row = case blob_live_row(b) of {
         Some(found) -> found;
         None -> ({ return 0; });
     };
+    if (text.length < 0) { return 0; }
     char *bytes = (char *)row->address;
     i32 n = text.length;
     if (n > row->cap) { n = row->cap; }

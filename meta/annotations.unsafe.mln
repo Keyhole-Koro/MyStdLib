@@ -107,6 +107,9 @@ Annotations make(str name, str type) {
 /** Read annotation rows from an MBIN image held in memory.
  * @param image MBIN file contents, which must outlive the iterator.
  * @return Iterator over its annotation rows; empty if the section is absent.
+ * Rows are read through raw pointers, so the section is cut to the bytes the
+ * image holds: a damaged or hostile header yields fewer rows, never memory
+ * outside the buffer.
  */
 export Annotations in_image(str image) {
     i32 len = 0;
@@ -115,8 +118,12 @@ export Annotations in_image(str image) {
         Some(off) -> ({
             case mbin.section_size(image, "annotations") of {
                 Some(bytes) -> ({
-                    data = (AnnotationRow*)(image.data + off);
-                    len = bytes / sizeof(AnnotationRow);
+                    if (off >= 0 && off <= image.length && bytes > 0) {
+                        i32 fit = image.length - off;
+                        if (bytes < fit) { fit = bytes; }
+                        data = (AnnotationRow*)(image.data + off);
+                        len = fit / sizeof(AnnotationRow);
+                    }
                 });
                 None -> _;
             };

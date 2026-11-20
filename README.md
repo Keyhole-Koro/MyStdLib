@@ -45,7 +45,7 @@ Debugging:
 
 | module | role |
 | --- | --- |
-| `debug/error_trace.mln` | error return trace: where an `Err` was created and each `?` it returned through, recorded by code built with `mlc --error-trace` (`depth()`, `site(i)`, `format(buf, cap)`) |
+| `debug/error_trace.mln` | error return trace: where an `Err` was created and each `?` it returned through, recorded by code built with `mlc --error-trace` (`depth()`, `site(i)`, `format(out)` into a `Text<768>`) |
 
 Hosted modules:
 
@@ -68,14 +68,15 @@ Used by [MyKernel](https://github.com/Keyhole-Koro/MyKernel),
 [MyLangCompiler](https://github.com/Keyhole-Koro/MyLangCompiler)'s generic
 import tests. See [GENERICS.md](GENERICS.md) for the generic container API.
 
-Every module is imported by explicit relative path (there is no implicit
-prelude): `import { Vec } from "collections/vec.mln";` -- a type's exported methods
+Every module is imported by explicit path (there is no implicit prelude),
+normally through the `@std` alias that MyComputer's `mylang.toml` maps to this
+repository: `import { Vec } from "@std/collections/vec.mln";` -- a type's exported methods
 (`v.push(x)`, `s.len()`) travel with it. `text/str.mln` supplies the compiler-known
 borrowed `str` view (`{ char* data; i32 length; }`) and its bridge to legacy
 `char*` buffers:
 
 ```mln
-import str from "text/str.mln";
+import str from "@std/text/str.mln";
 
 str name = "MyOS";
 if (name.starts_with("My")) {
@@ -97,8 +98,8 @@ when the complete input does not fit. A named struct literal supplies the
 empty zero value, so no separate initialization call is needed.
 
 ```mln
-import str from "text/str.mln";
-import { Text } from "text/text.mln";
+import str from "@std/text/str.mln";
+import { Text } from "@std/text/text.mln";
 
 Text<128> line = Text<128> {};
 line.append("pid=");
@@ -118,8 +119,8 @@ freed by the source binding, and the compiler calls `drop()` for the final
 owner automatically.
 
 ```mln
-import string from "text/string.mln";
-import { String } from "text/string.mln";
+import string from "@std/text/string.mln";
+import { String } from "@std/text/string.mln";
 
 String line = string.with_capacity(128);
 line.append("pid=");
@@ -137,8 +138,8 @@ must provide `assert_fail(char* message)` for their runtime-specific failure
 behaviour (for example, printing and halting in a kernel test).
 
 ```mln
-import assert from "testing/assert.mln";
-import { assert_eq } from "testing/assert.mln";
+import assert from "@std/testing/assert.mln";
+import { assert_eq } from "@std/testing/assert.mln";
 
 void assert_fail(char* message) {
     // runtime-specific reporting and termination
@@ -147,3 +148,18 @@ void assert_fail(char* message) {
 assert.assert_true(ready, "must be ready");
 assert_eq<i32>(actual, expected, "unexpected value");
 ```
+
+## Tests
+
+`tests/*.unsafe.test.mln` are MyLangTester cases: each `/*@Test "name" { ... }*/`
+function is built and run on its own in the emulator. They import only `@std`;
+TestKit supplies `assert_fail`, and a test that needs an allocator configures a
+static pool itself. From the MyComputer root, with the toolchain built:
+
+```bash
+toolchain/MyLangTester/build/mytest toolchain/MyStdLib/tests
+```
+
+They are not part of `make qa` yet. The library is also exercised by
+`system/MyKernel/tests/libs/std.unsafe.test.mln` and by MyLangCompiler's
+`make test-component` and `make test-e2e`.

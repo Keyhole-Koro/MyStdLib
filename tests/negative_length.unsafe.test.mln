@@ -1,0 +1,67 @@
+import str from "@std/text/str.mln";
+import { Text } from "@std/text/text.mln";
+import { Option } from "@std/core/option.mln";
+import { Result } from "@std/core/result.mln";
+import allocator from "@std/memory/allocator.mln";
+import { AllocationError } from "@std/memory/allocator.mln";
+import blob from "@std/memory/blob.mln";
+import { Blob } from "@std/memory/blob.mln";
+import assert from "@std/testing/assert.mln";
+import { assert_eq } from "@std/testing/assert.mln";
+
+// A `str` is a pointer and a length the caller made, so a @safe writer must
+// not trust the length to be non-negative: a negative one used to move the
+// write cursor before the start of the buffer.
+
+// Blob needs an allocator. Each allocation here is preceded by guard bytes,
+// so a write before the buffer shows up in the pool.
+const i32 GUARD = 0x47;
+char g_pool[65536];
+i32 g_pool_used = 0;
+i32 g_last_at = 0;
+
+Result<i32, AllocationError> pool_alloc(i32 size) {
+    i32 need = 4 + size;
+    if (g_pool_used + need > 65536) { return Err(AllocationError::OutOfMemory); }
+    i32 i = 0;
+    while (i < 4) { g_pool[g_pool_used + i] = (char)GUARD; i++; }
+    g_last_at = g_pool_used + 4;
+    g_pool_used = g_pool_used + ((need + 3) / 4) * 4;
+    return Ok((i32)(&g_pool[g_last_at]));
+}
+
+void pool_free(i32 pointer) { }
+
+/*@Test "Text.append refuses a negative-length view" {
+    step: 50000000;
+}*/
+void text_append_negative() {
+    Text<16> t = Text<16> {};
+    t.append("ab");
+    char *raw = "xyz";
+    str bad = str { data: raw, length: 0 - 1 };
+    assert_eq<bool>(t.append(bad), false, "append of a negative-length view must fail");
+    assert_eq<i32>(t.len(), 2, "append of a negative-length view must leave the length");
+    assert.assert_str_eq(t.as_str(), "ab", "append of a negative-length view must leave the text");
+    assert_eq<bool>(t.append("cd"), true, "the text still takes a valid append");
+    assert.assert_str_eq(t.as_str(), "abcd", "valid append after a refused one");
+}
+
+/*@Test "Blob.write ignores a negative-length view" {
+    step: 200000000;
+}*/
+void blob_write_negative() {
+    allocator.configure(pool_alloc, pool_free);
+    Blob b = case blob.blob_new(4) of {
+        Some(made) -> made;
+        None -> ({ assert.assert_true(false, "blob_new failed"); return; });
+    };
+    i32 at = g_last_at;
+    assert_eq<i32>(b.write("wxyz"), 4, "write fills the blob");
+    char *raw = "q";
+    str bad = str { data: raw, length: 0 - 1 };
+    assert_eq<i32>(b.write(bad), 0, "write of a negative-length view writes nothing");
+    assert_eq<i32>((i32)g_pool[at - 1] & 0xFF, GUARD, "write of a negative-length view wrote before the buffer");
+    assert_eq<i32>(b.cap(), 4, "write of a negative-length view must leave the capacity");
+    assert.assert_str_eq(b.as_str(), "wxyz", "write of a negative-length view must leave the contents");
+}
