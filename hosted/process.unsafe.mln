@@ -81,7 +81,8 @@ export Text<128> args() {
  */
 @safe
 export Result<bool, ProcessControlError> has_exited(Pid pid) {
-    Result<bool, ProcessControlError> result;
+    // The OS writes the answer only when it takes the call.
+    Result<bool, ProcessControlError> result = Err(ProcessControlError::InvalidPid(pid));
     ProcExitedArgs<Result<bool, ProcessControlError>> args = ProcExitedArgs<Result<bool, ProcessControlError>> {
         pid: (i32)pid, result_out: &result
     };
@@ -95,7 +96,8 @@ export Result<bool, ProcessControlError> has_exited(Pid pid) {
  */
 @safe
 export Result<ProcessExitStatus, ProcessControlError> reap(Pid pid) {
-    Result<ProcessExitStatus, ProcessControlError> result;
+    // The OS writes the answer only when it takes the call.
+    Result<ProcessExitStatus, ProcessControlError> result = Err(ProcessControlError::InvalidPid(pid));
     ProcReapArgs<Result<ProcessExitStatus, ProcessControlError>> args = ProcReapArgs<Result<ProcessExitStatus, ProcessControlError>> {
         pid: (i32)pid, result_out: &result
     };

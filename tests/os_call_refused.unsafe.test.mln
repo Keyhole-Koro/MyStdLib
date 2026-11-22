@@ -1,0 +1,74 @@
+import assert from "@std/testing/assert.mln";
+import mock from "../../MyLangTestKit/runtime/facade.mln";
+import fs from "@std/hosted/fs.mln";
+import process from "@std/hosted/process.mln";
+import myos_service from "@std/platform/myos/service.mln";
+import { SyscallFailure, SyscallStatus } from "@contracts/myos/syscall.contract.mln";
+import { FsError, SeekWhence } from "@contracts/io/fs.contract.mln";
+import { Pid, ProcessControlError, ProcessExitStatus } from "@contracts/process/control.contract.mln";
+import { Result } from "@std/core/result.mln";
+import { Option } from "@std/core/option.mln";
+
+// The fs and process calls answer through the record's result_out, which the
+// OS writes only when it takes the call. One it refuses -- BadAddress for
+// memory that is not the caller's -- leaves it unwritten, and the call must
+// still be an error, whatever the stack held where the answer lives.
+
+i32 g_calls = 0;
+
+// The kernel refused the call: the OS never read the record.
+Result<i32, SyscallFailure> refused_call(i32 service, i32 args) {
+    g_calls++;
+    return Err(SyscallFailure { status: SyscallStatus::BadAddress, payload: args });
+}
+
+// What a stack frame left behind: answers that read as Ok.
+i32 leave_answers_on_the_stack() {
+    Result<i32, FsError> a = Ok(7);
+    Result<i32, FsError> b = Ok(7);
+    Result<i32, FsError> c = Ok(7);
+    Result<i32, FsError> d = Ok(7);
+    return a.unwrap_or(0) + b.unwrap_or(0) + c.unwrap_or(0) + d.unwrap_or(0);
+}
+
+bool refused(Result<i32, FsError> answer) {
+    return case answer of { Err(FsError::Disabled) -> true; _ -> false; };
+}
+
+/*@Test "a file call the OS refused is an error" { step: 20000000; }*/
+void a_file_call_the_os_refused_is_an_error() {
+    mock.of(myos_service.call).when(mock.any(), mock.any()).call(refused_call);
+    leave_answers_on_the_stack();
+    assert.assert_true(refused(fs.open("readme.txt")), "open");
+    leave_answers_on_the_stack();
+    assert.assert_true(refused(fs.create("new.txt")), "create");
+    leave_answers_on_the_stack();
+    assert.assert_true(fs.read(3).is_err(), "read");
+    leave_answers_on_the_stack();
+    assert.assert_true(refused(fs.write(3, "data")), "write");
+    leave_answers_on_the_stack();
+    assert.assert_true(refused(fs.seek(3, 0, SeekWhence::Set)), "seek");
+    leave_answers_on_the_stack();
+    assert.assert_true(fs.remove("old.txt").is_err(), "remove");
+    leave_answers_on_the_stack();
+    assert.assert_true(refused(fs.mkdir("dir")), "mkdir");
+    leave_answers_on_the_stack();
+    assert.assert_true(fs.next_entry("/", 0).is_err(), "next_entry");
+    leave_answers_on_the_stack();
+    assert.assert_true(fs.is_dir(1).is_err(), "is_dir");
+    leave_answers_on_the_stack();
+    assert.assert_true(refused(fs.entry_size(1)), "entry_size");
+    assert.assert_true(g_calls == 10, "each asked the OS once");
+}
+
+/*@Test "a process call the OS refused is an error" { step: 20000000; }*/
+void a_process_call_the_os_refused_is_an_error() {
+    mock.of(myos_service.call).when(mock.any(), mock.any()).call(refused_call);
+    leave_answers_on_the_stack();
+    assert.assert_true(process.has_exited(Pid(5)).is_err(), "has_exited");
+    leave_answers_on_the_stack();
+    assert.assert_true(process.reap(Pid(5)).is_err(), "reap");
+    leave_answers_on_the_stack();
+    // has_exited's error ends the wait instead of sleeping for a child forever.
+    assert.assert_true(process.wait(Pid(5)).is_err(), "wait");
+}
