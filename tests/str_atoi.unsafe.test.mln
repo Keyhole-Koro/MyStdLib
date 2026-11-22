@@ -1,0 +1,89 @@
+import str from "@std/text/str.mln";
+import { ParseIntError } from "@std/text/str.mln";
+import { Text } from "@std/text/text.mln";
+import { Result } from "@std/core/result.mln";
+import int32 from "@std/core/int32.mln";
+import assert from "@std/testing/assert.mln";
+import { assert_eq } from "@std/testing/assert.mln";
+
+// str.atoi accumulates negatively so int32.MIN fits; these cases sit on
+// either side of each limit.
+
+const i32 PARSED = 0;
+const i32 NO_DIGITS = 1;
+const i32 OVERFLOW = 2;
+
+i32 g_outcome = 0;
+
+// The parsed value; g_outcome says whether it parsed or how it failed.
+i32 parse(str input) {
+    Result<i32, ParseIntError> parsed = str.atoi(input);
+    return case parsed of {
+        Ok(value) -> ({ g_outcome = PARSED; value; });
+        Err(ParseIntError::NoDigits) -> ({ g_outcome = NO_DIGITS; 0; });
+        Err(ParseIntError::Overflow) -> ({ g_outcome = OVERFLOW; 0; });
+    };
+}
+
+void expect_value(str input, i32 expected, str message) {
+    i32 value = parse(input);
+    assert_eq<i32>(g_outcome, PARSED, message);
+    assert_eq<i32>(value, expected, message);
+}
+
+void expect_error(str input, i32 outcome, str message) {
+    parse(input);
+    assert_eq<i32>(g_outcome, outcome, message);
+}
+
+/*@Test "str.atoi parses up to the i32 limits" {
+    step: 50000000;
+}*/
+void atoi_limits() {
+    expect_value("2147483647", int32.MAX, "the largest i32");
+    expect_value("+2147483647", int32.MAX, "the largest i32 with a plus sign");
+    expect_value("-2147483648", int32.MIN, "the smallest i32");
+    expect_value("2147483647x", int32.MAX, "the largest i32 then a non-digit");
+    expect_value("0000000000002147483647", int32.MAX, "leading zeros do not overflow");
+    expect_value("-0", 0, "minus zero");
+    expect_value("-214748364", int32.MIN_DIV_10, "MIN / 10 itself");
+}
+
+/*@Test "str.atoi reports overflow past the i32 limits" {
+    step: 50000000;
+}*/
+void atoi_overflow() {
+    expect_error("2147483648", OVERFLOW, "one past the largest i32");
+    expect_error("-2147483649", OVERFLOW, "one past the smallest i32");
+    expect_error("2147483650", OVERFLOW, "last digit past the limit");
+    expect_error("21474836470", OVERFLOW, "one digit too many");
+    expect_error("99999999999999999999", OVERFLOW, "far too many digits");
+}
+
+/*@Test "str.atoi wants a digit after the sign" {
+    step: 50000000;
+}*/
+void atoi_no_digits() {
+    expect_error("", NO_DIGITS, "an empty string");
+    expect_error("-", NO_DIGITS, "a lone minus");
+    expect_error("+", NO_DIGITS, "a lone plus");
+    expect_error("--1", NO_DIGITS, "two signs");
+    expect_error(" 1", NO_DIGITS, "a leading space");
+}
+
+/*@Test "to_string writes the i32 limits" {
+    step: 50000000;
+}*/
+void to_string_limits() {
+    i32 min = int32.MIN;
+    Text<12> min_text = min.to_string();
+    assert.assert_str_eq(min_text.as_str(), "-2147483648", "to_string of int32.MIN");
+    i32 max = int32.MAX;
+    Text<12> max_text = max.to_string();
+    assert.assert_str_eq(max_text.as_str(), "2147483647", "to_string of int32.MAX");
+    i32 minus_one = 0 - 1;
+    Text<12> minus_one_text = minus_one.to_string();
+    assert.assert_str_eq(minus_one_text.as_str(), "-1", "to_string of -1");
+    expect_value(min_text.as_str(), int32.MIN, "int32.MIN round-trips");
+    expect_value(max_text.as_str(), int32.MAX, "int32.MAX round-trips");
+}
