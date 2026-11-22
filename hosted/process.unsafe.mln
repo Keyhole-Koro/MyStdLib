@@ -38,8 +38,10 @@ export Result<Pid, SpawnError> spawn(str path) { return spawn_with(path, ""); }
 
 /** Start an executable process with arguments, as spawn does.
  * @param path Executable path, or a name looked up in /bin then /apps.
- * @param arguments What it reads with args(): the rest of a command line.
- * @return New process ID, or the detailed spawn error.
+ * @param arguments What it reads with args(): the rest of a command line,
+ *        at most ARGS_MAX bytes.
+ * @return New process ID, or the detailed spawn error: ArgumentsTooLong for
+ *         longer arguments, which are refused rather than cut.
  */
 @safe
 export Result<Pid, SpawnError> spawn_with(str path, str arguments) {
